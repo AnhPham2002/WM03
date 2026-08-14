@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug STM32",
+            "type": "cortex-debug",
+            "request": "launch",
+
+            "cwd": "${workspaceFolder}",
+
+            "executable": "${command:cmake.launchTargetPath}",
+
+            "servertype": "stlink",
+            "device": "STM32L431RCT6",
+            "interface": "swd",
+
+            "runToEntryPoint": "main",
+
+            "preLaunchTask": "CMake: build",
+
+            "liveWatch": {
+                "enabled": true,
+                "samplesPerSecond": 10
+            },
+        }
+    ]
+}
