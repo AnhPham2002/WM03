@@ -39,12 +39,16 @@ build-r:
 
 .PHONY: flash
 flash: build-r
-	STM32_Programmer_CLI -c port=SWD -w "$(BOOT_ELF_RELEASE)" -rst
-	STM32_Programmer_CLI -c port=SWD -w "$(APPA_ELF_RELEASE)" -rst
+	STM32_Programmer_CLI -c port=SWD mode=UR -e all
+	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(BOOT_ELF_RELEASE)" -v
+	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(APPA_ELF_RELEASE)" -v
+	STM32_Programmer_CLI -c port=SWD -rst
 
 flash-d: build-d
-	STM32_Programmer_CLI -c port=SWD -w "$(BOOT_ELF_DEBUG)" -rst
-	STM32_Programmer_CLI -c port=SWD -w "$(APPA_ELF_DEBUG)" -rst
+	STM32_Programmer_CLI -c port=SWD mode=UR -e all
+	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(BOOT_ELF_DEBUG)" -v
+	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(APPA_ELF_DEBUG)" -v
+	STM32_Programmer_CLI -c port=SWD -rst
 
 # ============================================================
 # Clean
