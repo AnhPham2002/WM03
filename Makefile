@@ -14,7 +14,7 @@ APPA_ELF_RELEASE  := $(BUILD_RELEASE)/App_a/WM03_app_a.elf
 APPB_ELF_RELEASE  := $(BUILD_RELEASE)/App_b/WM03_app_b.elf
 
 .PHONY: all
-all: clean debug release
+all: clean build
 
 # ============================================================
 # Build
