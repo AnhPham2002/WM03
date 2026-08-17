@@ -10,4 +10,5 @@
     "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
 
     "editor.inlayHints.enabled": "off",
+    "stm32cube-ide-clangd.enableFormatting": true,
 }

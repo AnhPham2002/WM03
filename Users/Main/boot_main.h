@@ -1,3 +1,3 @@
 #pragma once
 
-void led_blink(void);
+void boot_main(void);
