@@ -1,0 +1,12 @@
+{
+    "version": "2.0.0",
+
+    "tasks": [
+        {
+            "label": "debug",
+            "type": "shell",
+            "command": "make flash-d",
+            "problemMatcher": []
+        }
+    ]
+}
