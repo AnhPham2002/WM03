@@ -20,6 +20,8 @@
 
             "preLaunchTask": "debug",
 
+            "runToEntryPoint": "main",
+
             "gdbPath":
                 "C:/Program Files/Arm/GNU Toolchain mingw-w64-x86_64-arm-none-eabi/bin/arm-none-eabi-gdb.exe",
 

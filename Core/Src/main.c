@@ -83,7 +83,9 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  #ifdef IS_BOOT
+  boot_main();
+  #elif IS_APP
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -97,12 +99,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    led_blink();
-    wdg_rst();
+    app_main();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
+  #endif
   /* USER CODE END 3 */
 }
 

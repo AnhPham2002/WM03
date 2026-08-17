@@ -107,18 +107,27 @@ endif()
 # ============================================================
 
 # User source files
-file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE USER_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/*.c
 )
+
+# Boot sources
+set(BOOT_SOURCES ${USER_SOURCES})
+list(FILTER BOOT_SOURCES EXCLUDE REGEX ".*/app_main\\.c$")
+
+# App sources
+set(APP_SOURCES ${USER_SOURCES})
+list(FILTER APP_SOURCES EXCLUDE REGEX ".*/boot_main\\.c$")
 
 # User paths
 set(APP_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Main
+    ${CMAKE_CURRENT_SOURCE_DIR}/Users/Configuration
 )
 
 # Create Boot and App executables
-add_executable(WM03_boot ${APP_SOURCES} ${MX_Application_Src})
+add_executable(WM03_boot ${BOOT_SOURCES} ${MX_Application_Src})
 add_executable(WM03_app_a ${APP_SOURCES} ${MX_Application_Src})
 add_executable(WM03_app_b ${APP_SOURCES} ${MX_Application_Src})
 

@@ -1,3 +1,3 @@
 #pragma once
 
-void wdg_rst(void);
+void app_main(void);
