@@ -123,8 +123,8 @@ list(FILTER APP_SOURCES EXCLUDE REGEX ".*/boot_main\\.c$")
 set(APP_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Main
+    ${CMAKE_CURRENT_SOURCE_DIR}/Users/System
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Configuration
-    ${CMAKE_CURRENT_SOURCE_DIR}/Users/Driver/Common
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Driver/Internal
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Driver/External
 )
