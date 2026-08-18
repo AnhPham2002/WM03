@@ -2,17 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug STM32",
+            "name": "Debug Boot",
             "type": "cortex-debug",
             "request": "launch",
 
             "cwd": "${workspaceFolder}",
 
-            "executable": "${workspaceFolder}/build/Debug/App_a/WM03_app_a.elf",
-
-            "symbolFiles": [
-                "${workspaceFolder}/build/Debug/Boot/WM03_boot.elf"
-            ],
+            "executable":
+                "${workspaceFolder}/build/Debug/Boot/WM03_boot.elf",
 
             "servertype": "stlink",
             "device": "STM32L431RCT6",
@@ -20,15 +17,28 @@
 
             "preLaunchTask": "debug",
 
-            "runToEntryPoint": "main",
+            "gdbPath":
+                "C:/Program Files/Arm/GNU Toolchain mingw-w64-x86_64-arm-none-eabi/bin/arm-none-eabi-gdb.exe"
+        },
+
+        {
+            "name": "Debug App A",
+            "type": "cortex-debug",
+            "request": "launch",
+
+            "cwd": "${workspaceFolder}",
+
+            "executable":
+                "${workspaceFolder}/build/Debug/App_a/WM03_app_a.elf",
+
+            "servertype": "stlink",
+            "device": "STM32L431RCT6",
+            "interface": "swd",
+
+            "preLaunchTask": "debug",
 
             "gdbPath":
-                "C:/Program Files/Arm/GNU Toolchain mingw-w64-x86_64-arm-none-eabi/bin/arm-none-eabi-gdb.exe",
-
-            "liveWatch": {
-                "enabled": true,
-                "samplesPerSecond": 10
-            }
+                "C:/Program Files/Arm/GNU Toolchain mingw-w64-x86_64-arm-none-eabi/bin/arm-none-eabi-gdb.exe"
         }
     ]
 }

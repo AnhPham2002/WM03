@@ -1,10 +1,17 @@
 #include "app_main.h"
-#include "gpio.h"
-#include "iwdg.h"
+#include "drv_common.h"
+#include "drv_led.h"
+#include "drv_wdt.h"
 
 void app_main(void)
 {
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_15);
-    HAL_Delay(1000);
-    HAL_IWDG_Refresh(&hiwdg);
+    drv_wdt_init();
+
+    while (1)
+    {
+        drv_wdr_restart();
+
+        drv_led_blink();
+        delay_ms(1000);
+    }
 }
