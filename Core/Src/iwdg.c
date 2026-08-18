@@ -21,7 +21,7 @@
 #include "iwdg.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "setting.h"
 /* USER CODE END 0 */
 
 IWDG_HandleTypeDef hiwdg;
@@ -35,7 +35,7 @@ void MX_IWDG_Init(void)
   /* USER CODE END IWDG_Init 0 */
 
   /* USER CODE BEGIN IWDG_Init 1 */
-
+  #ifdef USE_WDT
   /* USER CODE END IWDG_Init 1 */
   hiwdg.Instance = IWDG;
   hiwdg.Init.Prescaler = IWDG_PRESCALER_256;
@@ -46,7 +46,7 @@ void MX_IWDG_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN IWDG_Init 2 */
-
+  #endif
   /* USER CODE END IWDG_Init 2 */
 
 }

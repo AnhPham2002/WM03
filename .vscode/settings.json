@@ -3,12 +3,14 @@
 
     "stm32cube-ide-clangd.arguments": [
         "starm-clangd",
+        "--compile-commands-dir=${workspaceFolder}/build/Debug",
         "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/*/bin/arm-none-eabi-gcc.exe",
-        "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/*/bin/arm-none-eabi-g++.exe",
+        "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/*/bin/arm-none-eabi-g++.exe"
     ],
 
     "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
 
     "editor.inlayHints.enabled": "off",
-    "stm32cube-ide-clangd.enableFormatting": true,
+
+    "stm32cube-ide-clangd.enableFormatting": true
 }
