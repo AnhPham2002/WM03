@@ -70,6 +70,10 @@ void Error_Handler(void);
 #define RX_4G_GPIO_Port GPIOB
 #define LED_Pin GPIO_PIN_15
 #define LED_GPIO_Port GPIOA
+#define PWR_485_Pin GPIO_PIN_10
+#define PWR_485_GPIO_Port GPIOC
+#define DE_485_Pin GPIO_PIN_4
+#define DE_485_GPIO_Port GPIOB
 #define TX_485_Pin GPIO_PIN_6
 #define TX_485_GPIO_Port GPIOB
 #define RX_485_Pin GPIO_PIN_7
