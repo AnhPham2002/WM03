@@ -55,8 +55,10 @@ void drv_cellular_reset(void);
  *
  * @param[in] pData   Data buffer.
  * @param[in] u16Size Data size.
+ *
+ * @return true if data is sent successfully, otherwise false.
  */
-void drv_cellular_send(const uint8_t *pData, uint16_t u16Size);
+bool drv_cellular_send(const uint8_t *pData, uint16_t u16Size);
 
 /**
  * @brief Receive data from cellular module.

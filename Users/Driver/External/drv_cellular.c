@@ -40,9 +40,9 @@ void drv_cellular_reset(void)
     drv_gpio_write(CELLULAR_RST_PIN, 0);
 }
 
-void drv_cellular_send(const uint8_t *pData, uint16_t u16Size)
+bool drv_cellular_send(const uint8_t *pData, uint16_t u16Size)
 {
-    drv_uart3_send(pData, u16Size);
+    return drv_uart3_send(pData, u16Size);
 }
 
 bool drv_cellular_receive(uint8_t *pData, uint16_t *u16Size)

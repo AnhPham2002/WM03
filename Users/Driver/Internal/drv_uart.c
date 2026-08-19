@@ -48,9 +48,9 @@ void drv_uart1_deinit(void)
     HAL_UART_MspDeInit(&huart1);
 }
 
-void drv_uart1_send(const uint8_t *pData, uint16_t u16Size)
+bool drv_uart1_send(const uint8_t *pData, uint16_t u16Size)
 {
-    HAL_UART_Transmit(&huart1, pData, u16Size, UART_POLLING_TIMEOUT);
+    return HAL_UART_Transmit(&huart1, pData, u16Size, UART_POLLING_TIMEOUT) == HAL_OK;
 }
 
 bool drv_uart1_receive(uint8_t *pData, uint16_t *u16Size)
@@ -92,9 +92,9 @@ void drv_uart2_deinit(void)
     HAL_UART_MspDeInit(&huart2);
 }
 
-void drv_uart2_send(const uint8_t *pData, uint16_t u16Size)
+bool drv_uart2_send(const uint8_t *pData, uint16_t u16Size)
 {
-    HAL_UART_Transmit(&huart2, pData, u16Size, UART_POLLING_TIMEOUT);
+    return HAL_UART_Transmit(&huart2, pData, u16Size, UART_POLLING_TIMEOUT) == HAL_OK;
 }
 
 bool drv_uart2_receive(uint8_t *pData, uint16_t *u16Size)
@@ -136,10 +136,10 @@ void drv_uart3_deinit(void)
     HAL_UART_MspDeInit(&huart3);
 }
 
-void drv_uart3_send(const uint8_t *pData, uint16_t u16Size)
+bool drv_uart3_send(const uint8_t *pData, uint16_t u16Size)
 {
     drv_uart3_flush_rx_buffer();
-    HAL_UART_Transmit(&huart3, pData, u16Size, UART_POLLING_TIMEOUT);
+    return HAL_UART_Transmit(&huart3, pData, u16Size, UART_POLLING_TIMEOUT) == HAL_OK;
 }
 
 bool drv_uart3_receive(uint8_t *pData, uint16_t *u16Size)
