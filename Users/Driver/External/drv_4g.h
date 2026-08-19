@@ -47,8 +47,10 @@ void drv_4g_reset(void);
  *
  * @param[in] pData   Data buffer.
  * @param[in] u16Size Data size.
+ *
+ * @return true if data is send successfully, otherwise false.
  */
-void drv_4g_send(const uint8_t *pData, uint16_t u16Size);
+bool drv_4g_send(const uint8_t *pData, uint16_t u16Size);
 
 /**
  * @brief Receive data from 4G module.
