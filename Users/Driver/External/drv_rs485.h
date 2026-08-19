@@ -26,8 +26,10 @@ void drv_rs485_pwr_off(void);
  *
  * @param[in] pData   Data buffer.
  * @param[in] u16Size Data size.
+ *
+ * @return true if data is send successfully, otherwise false.
  */
-void drv_rs485_send(const uint8_t *pData, uint16_t u16Size);
+bool drv_rs485_send(const uint8_t *pData, uint16_t u16Size);
 
 /**
  * @brief Receive data from RS485.

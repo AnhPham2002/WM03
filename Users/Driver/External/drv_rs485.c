@@ -29,11 +29,13 @@ void drv_rs485_pwr_off(void)
     drv_gpio_write(PWR485_PIN, 1);
 }
 
-void drv_rs485_send(const uint8_t *pData, uint16_t u16Size)
+bool drv_rs485_send(const uint8_t *pData, uint16_t u16Size)
 {
+    bool bTxStatus = false;
     drv_rs485_set_mode_tx();
-    drv_uart1_send(pData, u16Size);
+    bTxStatus = drv_uart1_send(pData, u16Size);
     drv_rs485_set_mode_rx();
+    return bTxStatus;
 }
 
 bool drv_rs485_receive(uint8_t *pData, uint16_t *u16Size)
