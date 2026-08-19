@@ -20,9 +20,13 @@ endif()
 
 # Set the project name
 set(CMAKE_PROJECT_NAME WM03)
-
-# Enable compile command to ease indexing with e.g. clangd
-set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+if (WM03_BOOT)
+    set(CMAKE_PROJECT_NAME WM03_BOOT)
+elseif (WM03_APP_A)
+    set(CMAKE_PROJECT_NAME WM03_APP_A)
+elseif (WM03_APP_B)
+    set(CMAKE_PROJECT_NAME WM03_APP_B)
+endif()
 
 # Core project settings
 project(${CMAKE_PROJECT_NAME})
@@ -31,96 +35,38 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
-# ============================================================
-# This code is copied from STM32CubeMX-generated sources.
-# Re-copy it if the code is regenerated.
-# ============================================================
+# Enable compile command to ease indexing with e.g. clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-# STM32CubeMX generated symbols (macros)
-set(MX_Defines_Syms
-    USE_HAL_DRIVER
-    STM32L431xx
-    $<$<CONFIG:Debug>:DEBUG>
-)
+# Create an executable object type
+add_executable(${CMAKE_PROJECT_NAME})
 
-# STM32CubeMX generated include paths
-set(MX_Include_Dirs
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Inc/Legacy
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32L4xx/Include
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Include
-)
-
-# STM32CubeMX generated application sources
-set(MX_Application_Src
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/main.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/gpio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/iwdg.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/stm32l4xx_it.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/stm32l4xx_hal_msp.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/sysmem.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/syscalls.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/startup_stm32l431xx.s
-)
-
-# STM32 HAL/LL Drivers
-set(STM32_Drivers_Src
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/system_stm32l4xx.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_iwdg.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_rcc_ex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_flash_ramfunc.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_gpio.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_i2c_ex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_dma_ex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_pwr_ex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_cortex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/STM32L4xx_HAL_Driver/Src/stm32l4xx_hal_exti.c
-)
-
-# ============================================================
-# This code is copied from STM32CubeMX-generated sources.
-# No changes are needed here.
-# ============================================================
-
-add_library(stm32cubemx INTERFACE)
-target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
-target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
-
-add_library(STM32_Drivers OBJECT)
-target_sources(STM32_Drivers PRIVATE ${STM32_Drivers_Src})
-target_link_libraries(STM32_Drivers PUBLIC stm32cubemx)
-
-if((CMAKE_C_STANDARD EQUAL 90) OR (CMAKE_C_STANDARD EQUAL 99))
-    message(ERROR "Generated code requires C11 or higher")
-endif()
-
-# ============================================================
-# Build Boot and App
-# ============================================================
+# Add STM32CubeMX generated sources
+add_subdirectory(cmake/stm32cubemx)
 
 # User source files
 file(GLOB_RECURSE USER_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/*.c
 )
 
-# Boot sources
-set(BOOT_SOURCES ${USER_SOURCES})
-list(FILTER BOOT_SOURCES EXCLUDE REGEX ".*/app_main\\.c$")
+# Select firmware sources
+if (WM03_BOOT)
+    set(FIRMWARE_SOURCES ${USER_SOURCES})
+    list(FILTER FIRMWARE_SOURCES EXCLUDE REGEX ".*/app_main\\.c$")
+elseif(WM03_APP_A OR WM03_APP_B)
+    set(FIRMWARE_SOURCES ${USER_SOURCES})
+    list(FILTER FIRMWARE_SOURCES EXCLUDE REGEX ".*/boot_main\\.c$")
+endif()
 
-# App sources
-set(APP_SOURCES ${USER_SOURCES})
-list(FILTER APP_SOURCES EXCLUDE REGEX ".*/boot_main\\.c$")
+# Firmware compile definitions
+if (WM03_BOOT)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE IS_BOOT)
+elseif(WM03_APP_A OR WM03_APP_B)
+    target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE IS_APP)
+endif()
 
 # User paths
-set(APP_INCLUDE_DIRS
+set(FIRMWARE_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Main
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/System
@@ -129,75 +75,68 @@ set(APP_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Driver/External
 )
 
-# Create Boot and App executables
-add_executable(WM03_boot ${BOOT_SOURCES} ${MX_Application_Src})
-add_executable(WM03_app_a ${APP_SOURCES} ${MX_Application_Src})
-add_executable(WM03_app_b ${APP_SOURCES} ${MX_Application_Src})
+# Link directories setup
+target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user defined library search paths
+)
 
-# Define build-specific macros
-target_compile_definitions(WM03_boot PRIVATE IS_BOOT)
-target_compile_definitions(WM03_app_a PRIVATE IS_APP)
-target_compile_definitions(WM03_app_b PRIVATE IS_APP)
+# Add sources to executable
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user sources here
+    ${FIRMWARE_SOURCES}
+)
 
-# Add user include directories
-target_include_directories(WM03_boot PRIVATE ${APP_INCLUDE_DIRS})
-target_include_directories(WM03_app_a PRIVATE ${APP_INCLUDE_DIRS})
-target_include_directories(WM03_app_b PRIVATE ${APP_INCLUDE_DIRS})
+# Add include paths
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user defined include paths
+    ${FIRMWARE_INCLUDE_DIRS}
+)
 
-# Link STM32CubeMX and STM32 driver libraries
-target_link_libraries(WM03_boot PRIVATE stm32cubemx STM32_Drivers)
-target_link_libraries(WM03_app_a PRIVATE stm32cubemx STM32_Drivers)
-target_link_libraries(WM03_app_b PRIVATE stm32cubemx STM32_Drivers)
+# Add project symbols (macros)
+target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
+    # Add user defined symbols
+)
+
+# Remove wrong libob.a library dependency when using cpp files
+list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
+
+# Add linked libraries
+target_link_libraries(${CMAKE_PROJECT_NAME}
+    stm32cubemx
+    # Add user defined libraries
+)
+
+# Select linker script
+if (WM03_BOOT)
+    set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/Linker/STM32L431XX_BOOT.ld)
+elseif(WM03_APP_A)
+    set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/Linker/STM32L431XX_APPA.ld)
+elseif(WM03_APP_B)
+    set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/Linker/STM32L431XX_APPB.ld)
+endif()
 
 # Specify linker scripts and map files
-target_link_options(WM03_boot PRIVATE
-    -T${CMAKE_CURRENT_SOURCE_DIR}/Linker/STM32L431XX_BOOT.ld
-    -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/Boot/WM03_boot.map
-)
-target_link_options(WM03_app_a PRIVATE
-    -T${CMAKE_CURRENT_SOURCE_DIR}/Linker/STM32L431XX_APPA.ld
-    -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/App_a/WM03_app_a.map
-)
-target_link_options(WM03_app_b PRIVATE
-    -T${CMAKE_CURRENT_SOURCE_DIR}/Linker/STM32L431XX_APPB.ld
-    -Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/App_b/WM03_app_b.map
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -T${LINKER_SCRIPT}
+    -Wl,-Map=${CMAKE_PROJECT_NAME}.map
+    -Wl,--gc-sections
 )
 
-# Set output directories
-set_target_properties(WM03_boot PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/Boot")
-set_target_properties(WM03_app_a PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/App_a")
-set_target_properties(WM03_app_b PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/App_b")
+# Generate BIN and HEX files from ELF
+add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
 
-# Remove map files when cleaning the build
-set_target_properties(WM03_boot PROPERTIES ADDITIONAL_CLEAN_FILES "WM03_boot.map;WM03_boot.hex;WM03_boot.bin")
-set_target_properties(WM03_app_a PROPERTIES ADDITIONAL_CLEAN_FILES "WM03_app_a.map;WM03_app_a.hex;WM03_app_a.bin")
-set_target_properties(WM03_app_b PROPERTIES ADDITIONAL_CLEAN_FILES "WM03_app_b.map;WM03_app_b.hex;WM03_app_b.bin")
+    COMMAND ${CMAKE_OBJCOPY}
+        -O binary
+        $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
+        ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin
 
-# Generate HEX and BIN files for Boot
-add_custom_command(TARGET WM03_boot POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O ihex
-            $<TARGET_FILE:WM03_boot>
-            $<TARGET_FILE_DIR:WM03_boot>/WM03_boot.hex
-    COMMAND ${CMAKE_OBJCOPY} -O binary
-            $<TARGET_FILE:WM03_boot>
-            $<TARGET_FILE_DIR:WM03_boot>/WM03_boot.bin
-    COMMENT "Generating WM03_boot.hex and WM03_boot.bin"
+    COMMAND ${CMAKE_OBJCOPY}
+        -O ihex
+        $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
+        ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_PROJECT_NAME}.hex
+
+    COMMENT "Generating BIN and HEX files"
 )
-add_custom_command(TARGET WM03_app_a POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O ihex
-            $<TARGET_FILE:WM03_app_a>
-            $<TARGET_FILE_DIR:WM03_app_a>/WM03_app_a.hex
-    COMMAND ${CMAKE_OBJCOPY} -O binary
-            $<TARGET_FILE:WM03_app_a>
-            $<TARGET_FILE_DIR:WM03_app_a>/WM03_app_a.bin
-    COMMENT "Generating WM03_app_a.hex and WM03_app_a.bin"
-)
-add_custom_command(TARGET WM03_app_b POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O ihex
-            $<TARGET_FILE:WM03_app_b>
-            $<TARGET_FILE_DIR:WM03_app_b>/WM03_app_b.hex
-    COMMAND ${CMAKE_OBJCOPY} -O binary
-            $<TARGET_FILE:WM03_app_b>
-            $<TARGET_FILE_DIR:WM03_app_b>/WM03_app_b.bin
-    COMMENT "Generating WM03_app_b.hex and WM03_app_b.bin"
-)
+
+# Remove wrong libob.a dependency when using C++
+list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
