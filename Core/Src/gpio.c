@@ -50,13 +50,16 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, WDI_Pin|PWR_4G_Pin|PWR_485_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, WDI_Pin|PWR_4G_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, KEY_4G_Pin|RST_4G_Pin|DE_485_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(PWR_485_GPIO_Port, PWR_485_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : WDI_Pin PWR_4G_Pin PWR_485_Pin */
   GPIO_InitStruct.Pin = WDI_Pin|PWR_4G_Pin|PWR_485_Pin;
