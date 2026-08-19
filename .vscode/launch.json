@@ -9,7 +9,7 @@
             "cwd": "${workspaceFolder}",
 
             "executable":
-                "${workspaceFolder}/build/Debug/Boot/WM03_boot.elf",
+                "${workspaceFolder}/build/Debug/Boot/WM03_BOOT.elf",
 
             "servertype": "stlink",
             "device": "STM32L431RCT6",
@@ -29,7 +29,7 @@
             "cwd": "${workspaceFolder}",
 
             "executable":
-                "${workspaceFolder}/build/Debug/App_a/WM03_app_a.elf",
+                "${workspaceFolder}/build/Debug/App_a/WM03_APP_A.elf",
 
             "servertype": "stlink",
             "device": "STM32L431RCT6",
