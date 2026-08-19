@@ -18,7 +18,15 @@ void sys_log(const uint8_t *pData, uint16_t u16Size)
 
 bool sys_console(uint8_t *pData, uint16_t *u16Size)
 {
+    bool bRxStatus = false;
 #ifdef USE_DEBUG
-    return drv_uart2_receive(pData, u16Size);
+    bRxStatus = drv_uart2_receive(pData, u16Size);
+#ifdef USE_ECHO
+    if (bRxStatus)
+    {
+        sys_log(pData, *u16Size);
+    }
 #endif
+#endif
+    return bRxStatus;
 }
