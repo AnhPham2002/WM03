@@ -60,10 +60,16 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define WDI_Pin GPIO_PIN_13
 #define WDI_GPIO_Port GPIOC
+#define PWR_4G_Pin GPIO_PIN_3
+#define PWR_4G_GPIO_Port GPIOC
 #define TX_LOG_Pin GPIO_PIN_2
 #define TX_LOG_GPIO_Port GPIOA
 #define RX_LOG_Pin GPIO_PIN_3
 #define RX_LOG_GPIO_Port GPIOA
+#define KEY_4G_Pin GPIO_PIN_0
+#define KEY_4G_GPIO_Port GPIOB
+#define RST_4G_Pin GPIO_PIN_2
+#define RST_4G_GPIO_Port GPIOB
 #define TX_4G_Pin GPIO_PIN_10
 #define TX_4G_GPIO_Port GPIOB
 #define RX_4G_Pin GPIO_PIN_11
