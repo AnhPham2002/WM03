@@ -1,9 +1,5 @@
 #include "drv_uart.h"
-#include "main.h"
-#include "sys_common.h"
 #include "usart.h"
-#include <stdbool.h>
-#include <stdint.h>
 
 static uint8_t au8Uart1RxBuf[UART1_RX_BUFFER_SIZE];
 static volatile uint16_t u16Uart1RxSize;
@@ -17,6 +13,14 @@ static uint8_t au8Uart3RxBuf[UART3_RX_BUFFER_SIZE];
 static volatile uint16_t u16Uart3RxCurrentPointer;
 static volatile uint16_t u16Uart3RxPreviousPointer;
 static volatile bool bUart3RxFlag = false;
+
+/**
+ * @brief  Flush Uart3 RX buffer.
+ *
+ * This function moves the previous DMA pointer to the current DMA pointer,
+ * so old unread data is ignored.
+ */
+static void drv_uart3_flush_rx_buffer(void);
 
 void drv_uart1_init(uint32_t u32Baud, uint32_t u32Parity)
 {
@@ -134,6 +138,7 @@ void drv_uart3_deinit(void)
 
 void drv_uart3_send(const uint8_t *pData, uint16_t u16Size)
 {
+    drv_uart3_flush_rx_buffer();
     HAL_UART_Transmit(&huart3, pData, u16Size, UART_POLLING_TIMEOUT);
 }
 
@@ -225,4 +230,9 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
         HAL_UARTEx_ReceiveToIdle_DMA(&huart3, au8Uart3RxBuf, UART3_RX_BUFFER_SIZE);
         __HAL_DMA_DISABLE_IT(huart3.hdmarx, DMA_IT_HT | DMA_IT_TC);
     }
+}
+
+static void drv_uart3_flush_rx_buffer(void)
+{
+    u16Uart3RxPreviousPointer = u16Uart3RxCurrentPointer;
 }
