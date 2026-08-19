@@ -36,8 +36,10 @@ void drv_uart1_deinit(void);
  *
  * @param[in] pData   Data buffer.
  * @param[in] u16Size Data size.
+ *
+ * @return true if data is send successfully, otherwise false.
  */
-void drv_uart1_send(const uint8_t *pData, uint16_t u16Size);
+bool drv_uart1_send(const uint8_t *pData, uint16_t u16Size);
 
 /**
  * @brief Receive data from UART1.
@@ -72,8 +74,10 @@ void drv_uart2_deinit(void);
  *
  * @param[in] pData   Data buffer.
  * @param[in] u16Size Data size.
+ *
+ * @return true if data is send successfully, otherwise false.
  */
-void drv_uart2_send(const uint8_t *pData, uint16_t u16Size);
+bool drv_uart2_send(const uint8_t *pData, uint16_t u16Size);
 
 /**
  * @brief Receive data from UART2.
@@ -108,8 +112,10 @@ void drv_uart3_deinit(void);
  *
  * @param[in] pData   Data buffer.
  * @param[in] u16Size Data size.
+ *
+ * @return true if data is send successfully, otherwise false.
  */
-void drv_uart3_send(const uint8_t *pData, uint16_t u16Size);
+bool drv_uart3_send(const uint8_t *pData, uint16_t u16Size);
 
 /**
  * @brief Receive data from UART3.
