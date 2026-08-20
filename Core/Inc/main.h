@@ -66,6 +66,14 @@ void Error_Handler(void);
 #define TX_LOG_GPIO_Port GPIOA
 #define RX_LOG_Pin GPIO_PIN_3
 #define RX_LOG_GPIO_Port GPIOA
+#define SPI_CS_EE_Pin GPIO_PIN_4
+#define SPI_CS_EE_GPIO_Port GPIOA
+#define SPI_SCK_Pin GPIO_PIN_5
+#define SPI_SCK_GPIO_Port GPIOA
+#define SPI_MISO_Pin GPIO_PIN_6
+#define SPI_MISO_GPIO_Port GPIOA
+#define SPI_MOSI_Pin GPIO_PIN_7
+#define SPI_MOSI_GPIO_Port GPIOA
 #define KEY_4G_Pin GPIO_PIN_0
 #define KEY_4G_GPIO_Port GPIOB
 #define RST_4G_Pin GPIO_PIN_2
