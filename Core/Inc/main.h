@@ -92,6 +92,10 @@ void Error_Handler(void);
 #define TX_485_GPIO_Port GPIOB
 #define RX_485_Pin GPIO_PIN_7
 #define RX_485_GPIO_Port GPIOB
+#define I2C_SCL_Pin GPIO_PIN_8
+#define I2C_SCL_GPIO_Port GPIOB
+#define I2C_SDA_Pin GPIO_PIN_9
+#define I2C_SDA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
