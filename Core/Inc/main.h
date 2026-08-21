@@ -86,8 +86,16 @@ void Error_Handler(void);
 #define LED_GPIO_Port GPIOA
 #define PWR_485_Pin GPIO_PIN_10
 #define PWR_485_GPIO_Port GPIOC
+#define EN_SS2_Pin GPIO_PIN_12
+#define EN_SS2_GPIO_Port GPIOC
+#define EN_SS1_Pin GPIO_PIN_2
+#define EN_SS1_GPIO_Port GPIOD
+#define PWR_SS_Pin GPIO_PIN_3
+#define PWR_SS_GPIO_Port GPIOB
 #define DE_485_Pin GPIO_PIN_4
 #define DE_485_GPIO_Port GPIOB
+#define PWR_E_ADC_Pin GPIO_PIN_5
+#define PWR_E_ADC_GPIO_Port GPIOB
 #define TX_485_Pin GPIO_PIN_6
 #define TX_485_GPIO_Port GPIOB
 #define RX_485_Pin GPIO_PIN_7
