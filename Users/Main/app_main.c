@@ -9,18 +9,20 @@ void app_main(void)
 
     sys_debug_init();
 
+    drv_rtc_init();
+
     sys_log((const uint8_t *)"System Init\n", 12);
 
     while (1)
     {
-        drv_wdr_restart();
-
-        sys_log((const uint8_t *)"Hello World\n", 12);
+        sys_log((const uint8_t *)"Hello World\r\n", 14);
         if (sys_console(au8RxTest, &u16RxTestLen))
         {
         }
 
-        drv_led_blink();
+        memset(au8RxTest, 0, sizeof(au8RxTest));
+
+        drv_wdt_clear_refresh_count();
         sys_delay_ms(1000);
     }
 }
