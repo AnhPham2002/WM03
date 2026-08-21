@@ -15,9 +15,4 @@ static inline uint32_t sys_time_ms(void)
     return HAL_GetTick();
 }
 
-static inline void sys_sleep(void)
-{
-    HAL_SuspendTick();
-    HAL_PWREx_EnterSTOP2Mode(PWR_STOPENTRY_WFI);
-    HAL_ResumeTick();
-}
+void sys_sleep(void);
