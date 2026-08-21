@@ -61,6 +61,10 @@ void drv_rtc_init(void)
     }
 }
 
-void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc) {}
+void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
+{
+    drv_led_blink();
+    drv_wdt_refresh();
+}
 
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc) {}
