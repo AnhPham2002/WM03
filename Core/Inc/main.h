@@ -62,6 +62,9 @@ void Error_Handler(void);
 #define WDI_GPIO_Port GPIOC
 #define PWR_4G_Pin GPIO_PIN_3
 #define PWR_4G_GPIO_Port GPIOC
+#define SYS_WKUP_Pin GPIO_PIN_0
+#define SYS_WKUP_GPIO_Port GPIOA
+#define SYS_WKUP_EXTI_IRQn EXTI0_IRQn
 #define TX_LOG_Pin GPIO_PIN_2
 #define TX_LOG_GPIO_Port GPIOA
 #define RX_LOG_Pin GPIO_PIN_3
