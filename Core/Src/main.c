@@ -21,6 +21,7 @@
 #include "dma.h"
 #include "i2c.h"
 #include "iwdg.h"
+#include "lptim.h"
 #include "rtc.h"
 #include "spi.h"
 #include "usart.h"
@@ -103,6 +104,7 @@ int main(void)
   MX_SPI1_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
+  MX_LPTIM1_Init();
   /* USER CODE BEGIN 2 */
   app_main();
   /* USER CODE END 2 */
