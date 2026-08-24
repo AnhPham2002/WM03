@@ -7,7 +7,7 @@ void drv_gpio_write(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinSta
     HAL_GPIO_WritePin(GPIOx, GPIO_Pin, PinState);
 }
 
-GPIO_PinState drv_gpio_read(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
+bool drv_gpio_read(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 {
     return HAL_GPIO_ReadPin(GPIOx, GPIO_Pin);
 }

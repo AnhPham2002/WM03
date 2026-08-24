@@ -23,7 +23,7 @@ void drv_gpio_write(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, GPIO_PinState PinSta
  *
  * @return GPIO pin state.
  */
-GPIO_PinState drv_gpio_read(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+bool drv_gpio_read(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 
 /**
  * @brief Toggle GPIO pin state.
