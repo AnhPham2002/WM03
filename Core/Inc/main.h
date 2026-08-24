@@ -85,6 +85,16 @@ void Error_Handler(void);
 #define TX_4G_GPIO_Port GPIOB
 #define RX_4G_Pin GPIO_PIN_11
 #define RX_4G_GPIO_Port GPIOB
+#define PULSE_EN_Pin GPIO_PIN_9
+#define PULSE_EN_GPIO_Port GPIOC
+#define PULSE1_IN_Pin GPIO_PIN_8
+#define PULSE1_IN_GPIO_Port GPIOA
+#define PULSE2_IN_Pin GPIO_PIN_9
+#define PULSE2_IN_GPIO_Port GPIOA
+#define PULSE3_IN_Pin GPIO_PIN_10
+#define PULSE3_IN_GPIO_Port GPIOA
+#define PULSE4_IN_Pin GPIO_PIN_11
+#define PULSE4_IN_GPIO_Port GPIOA
 #define LED_Pin GPIO_PIN_15
 #define LED_GPIO_Port GPIOA
 #define PWR_485_Pin GPIO_PIN_10
