@@ -3,6 +3,29 @@
 
 static void sys_clock_config(void);
 
+uint16_t sys_crc_16(uint8_t *pData, uint16_t u16Size)
+{
+    uint16_t u16Crc = 0xFFFF;
+    for (uint16_t u16Pos = 0; u16Pos < u16Size; u16Pos++)
+    {
+        u16Crc ^= (unsigned int)pData[u16Pos]; // XOR byte into least sig. byte of crc
+
+        for (int i = 8; i != 0; i--) // Loop over each bit
+        {
+            if ((u16Crc & 0x0001) != 0) // If the LSB is set
+            {
+                u16Crc = (u16Crc >> 1) ^ 0xA001; // Shift right and XOR 0xA001
+            }
+            else // Else LSB is not set
+            {
+                u16Crc >>= 1; // Just shift right
+            }
+        }
+    }
+
+    return u16Crc;
+}
+
 void sys_sleep(void)
 {
     HAL_SuspendTick();
