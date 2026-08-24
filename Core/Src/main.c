@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "crc.h"
 #include "dma.h"
 #include "i2c.h"
 #include "iwdg.h"
@@ -105,6 +106,7 @@ int main(void)
   MX_I2C1_Init();
   MX_RTC_Init();
   MX_LPTIM1_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   app_main();
   /* USER CODE END 2 */
