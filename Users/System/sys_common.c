@@ -3,7 +3,7 @@
 
 static void sys_clock_config(void);
 
-uint16_t sys_crc16(uint8_t *pData, uint16_t u16Size)
+uint16_t sys_crc16(const uint8_t *pData, uint16_t u16Size)
 {
     uint16_t u16Crc = 0xFFFF;
     for (uint16_t u16Pos = 0; u16Pos < u16Size; u16Pos++)
