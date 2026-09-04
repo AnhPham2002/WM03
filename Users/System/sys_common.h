@@ -27,5 +27,5 @@ static inline uint32_t sys_time_ms(void)
     return HAL_GetTick();
 }
 
-uint16_t sys_crc16(uint8_t *pData, uint16_t u16Size);
+uint16_t sys_crc16(const uint8_t *pData, uint16_t u16Size);
 void sys_sleep(void);
