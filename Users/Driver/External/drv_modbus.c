@@ -65,15 +65,22 @@ Modbus_Status_t drv_modbus_master_read_register(uint8_t u8SlaveAddr, uint8_t u8F
         return MODBUS_ERROR;
     }
 
-    sys_delay_ms(MODBUS_RESPONSE_TIMEOUT);
-
     Modbus_Status_t eModbusStatus;
     uint8_t u8RxSlaveAddr;
     uint8_t u8RxFuncCode;
     uint8_t au8RxData[20];
     uint16_t u16RxDataSize;
+    uint32_t u32TimeStart = sys_time_ms();
+    do
+    {
+        eModbusStatus = drv_modbus_receive(&u8RxSlaveAddr, &u8RxFuncCode, au8RxData, &u16RxDataSize);
+        if (sys_time_ms() - u32TimeStart >= MODBUS_RESPONSE_TIMEOUT)
+        {
+            break;
+        }
+    }
+    while (eModbusStatus != MODBUS_OK);
 
-    eModbusStatus = drv_modbus_receive(&u8RxSlaveAddr, &u8RxFuncCode, au8RxData, &u16RxDataSize);
     drv_rs485_pwr_off();
 
     if (eModbusStatus != MODBUS_OK)
