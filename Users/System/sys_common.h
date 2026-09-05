@@ -7,8 +7,11 @@
 #include "flash_layout.h"
 #include "ram_noinit_layout.h"
 
+#include "sys_debug.h"
+
 #include <math.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
