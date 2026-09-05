@@ -1,19 +1,18 @@
 #include "drv_pulse.h"
 
+#define RAM_NOINIT_PULSE_COUNT_MAGIC_NUMBER 0x12345678
+
 static volatile bool bPreviousPulse1Status;
 static volatile bool bPreviousPulse2Status;
 static volatile bool bPreviousPulse3Status;
 static volatile bool bPreviousPulse4Status;
 
-static volatile uint32_t u32PreviousEdgePulse1DetectTime;
-static volatile uint32_t u32PreviousEdgePulse2DetectTime;
-static volatile uint32_t u32PreviousEdgePulse3DetectTime;
-static volatile uint32_t u32PreviousEdgePulse4DetectTime;
+static Pulse_Config_t sPulseConfig[MAX_PULSE_GATE_COUNT];
+static volatile double dPulseFrequency[MAX_PULSE_GATE_COUNT];
 
-static volatile Pulse_Frequency_t sPulseFrequency;
-
-static volatile Pulse_Count_t *const pPulseCount = (volatile Pulse_Count_t *)RAM_NOINIT_PULSE_COUNT_ADDRESS;
-static volatile uint16_t *const pPulseCountCrc = (volatile uint16_t *)RAM_NOINIT_PULSE_COUNT_CRC_ADDRESS;
+static volatile uint32_t u32PulseCountMagic RAM_NOINIT;
+static volatile Pulse_Count_t sPulseCount[MAX_PULSE_GATE_COUNT] RAM_NOINIT;
+static volatile uint16_t u16PulseCountCrc RAM_NOINIT;
 
 /*==================================================================================================
 *                                PRIVATE FUNCTIONS DECLARATIONS
@@ -64,20 +63,13 @@ static inline bool drv_pulse4_read(void);
  *
  * @return Detected edge status.
  */
-static Edge_Status_t drv_pulse_edge_detect(Pulse_Read_Select_t ePulseIn);
+static Edge_Status_t drv_pulse_edge_detect(Pulse_Input_t ePulseIn);
 
 /**
- * @brief  Update pulse count and frequency data for all pulse inputs.
+ * @brief Update pulse count based on detected pulse edges.
  *
- * This function detects pulse edges, updates the accumulated pulse count,
- * and calculates the pulse frequency based on the time interval between
- * consecutive detected edges. If no edge is detected within the configured
- * timeout period, the corresponding pulse frequency is set to zero.
- *
- * @note   The pulse frequency calculation depends on the system time
- *         resolution and the edge detection period.
- *
- * @return None.
+ * Detects pulse edges for single pulse inputs and updates the forward
+ * pulse count and CRC when a pulse is detected.
  */
 static void drv_pulse_update_data(void);
 
@@ -85,17 +77,8 @@ static void drv_pulse_update_data(void);
 *                                   PUBLIC FUNCTIONS DEFINITIONS
 ==================================================================================================*/
 
-void drv_pulse_init(Pulse_Count_t *pCount)
+void drv_pulse_init(void)
 {
-    uint32_t u32Magic = *(volatile uint32_t *)RAM_NOINIT_MAGIC_ADDRESS;
-    uint16_t u16Crc = *(volatile uint16_t *)RAM_NOINIT_PULSE_COUNT_CRC_ADDRESS;
-    if ((u32Magic != RAM_NOINIT_MAGIC_NUMBER) || (sys_crc16((uint8_t *)pPulseCount, sizeof(Pulse_Count_t)) != u16Crc))
-    {
-        *pPulseCount = *pCount;
-        *pPulseCountCrc = sys_crc16((uint8_t *)pPulseCount, sizeof(Pulse_Count_t));
-        *(volatile uint32_t *)RAM_NOINIT_MAGIC_ADDRESS = RAM_NOINIT_MAGIC_NUMBER;
-    }
-
     drv_pulse_read_enable();
     sys_delay_ms(1); // Delay for capacitor charge
     bPreviousPulse1Status = drv_pulse1_read();
@@ -104,12 +87,19 @@ void drv_pulse_init(Pulse_Count_t *pCount)
     bPreviousPulse4Status = drv_pulse4_read();
     drv_pulse_read_disable();
 
-    u32PreviousEdgePulse1DetectTime = sys_time_ms();
-    u32PreviousEdgePulse2DetectTime = u32PreviousEdgePulse1DetectTime;
-    u32PreviousEdgePulse3DetectTime = u32PreviousEdgePulse2DetectTime;
-    u32PreviousEdgePulse4DetectTime = u32PreviousEdgePulse3DetectTime;
-
     drv_timer1_low_power_init(PULSE_READ_PERIOD);
+}
+
+void drv_pulse_count_init(const Pulse_Count_t *pCount)
+{
+    if ((u32PulseCountMagic != RAM_NOINIT_PULSE_COUNT_MAGIC_NUMBER) || (sys_crc16((uint8_t *)&sPulseCount, sizeof(sPulseCount)) != u16PulseCountCrc))
+    {
+        __disable_irq();
+        memcpy((void *)&sPulseCount, pCount, sizeof(sPulseCount));
+        u16PulseCountCrc = sys_crc16((uint8_t *)&sPulseCount, sizeof(sPulseCount));
+        __enable_irq();
+        u32PulseCountMagic = RAM_NOINIT_PULSE_COUNT_MAGIC_NUMBER;
+    }
 }
 
 void drv_pulse_interrupt_handler(bool bReadable)
@@ -125,10 +115,47 @@ void drv_pulse_interrupt_handler(bool bReadable)
     }
 }
 
-void drv_pulse_get_data(Pulse_Count_t *pCount, Pulse_Frequency_t *pFrequency)
+bool drv_pulse_set_count(uint8_t u8Index, const Pulse_Count_t *pCount)
 {
-    *pCount = *pPulseCount;
-    *pFrequency = sPulseFrequency;
+    if ((u8Index >= MAX_PULSE_GATE_COUNT) || (pCount == NULL))
+    {
+        return false;
+    }
+
+    __disable_irq();
+    memcpy((void *)&sPulseCount[u8Index], pCount, sizeof(Pulse_Count_t));
+    u16PulseCountCrc = sys_crc16((uint8_t *)&sPulseCount, sizeof(sPulseCount));
+    __enable_irq();
+
+    return true;
+}
+
+bool drv_pulse_set_config(uint8_t u8Index, const Pulse_Config_t *pConfig)
+{
+    if ((u8Index >= MAX_PULSE_GATE_COUNT) || (pConfig == NULL))
+    {
+        return false;
+    }
+
+    sPulseConfig[u8Index] = *pConfig;
+
+    return true;
+}
+
+bool drv_pulse_get_data(uint8_t u8Index, Pulse_Data_t *pData)
+{
+    if ((u8Index >= MAX_PULSE_GATE_COUNT) || (pData == NULL))
+    {
+        return false;
+    }
+
+    __disable_irq();
+    pData->u64ForwardPulseCount = sPulseCount[u8Index].u64ForwardPulseCount;
+    pData->u64ReversePulseCount = sPulseCount[u8Index].u64ReversePulseCount;
+    __enable_irq();
+    pData->dPulseFrequency = dPulseFrequency[u8Index];
+
+    return true;
 }
 
 /*==================================================================================================
@@ -165,29 +192,29 @@ static inline bool drv_pulse4_read(void)
     return drv_gpio_read(PULSE4_IN_PIN);
 }
 
-static Edge_Status_t drv_pulse_edge_detect(Pulse_Read_Select_t ePulseIn)
+static Edge_Status_t drv_pulse_edge_detect(Pulse_Input_t ePulseIn)
 {
     bool bCurrentPulseStatus;
     volatile bool *pPreviousPulseStatus;
 
     switch (ePulseIn)
     {
-    case PULSE1_READ:
+    case PULSE_INPUT_1:
         pPreviousPulseStatus = &bPreviousPulse1Status;
         bCurrentPulseStatus = drv_pulse1_read();
         break;
 
-    case PULSE2_READ:
+    case PULSE_INPUT_2:
         pPreviousPulseStatus = &bPreviousPulse2Status;
         bCurrentPulseStatus = drv_pulse2_read();
         break;
 
-    case PULSE3_READ:
+    case PULSE_INPUT_3:
         pPreviousPulseStatus = &bPreviousPulse3Status;
         bCurrentPulseStatus = drv_pulse3_read();
         break;
 
-    case PULSE4_READ:
+    case PULSE_INPUT_4:
         pPreviousPulseStatus = &bPreviousPulse4Status;
         bCurrentPulseStatus = drv_pulse4_read();
         break;
@@ -209,83 +236,28 @@ static Edge_Status_t drv_pulse_edge_detect(Pulse_Read_Select_t ePulseIn)
 static void drv_pulse_update_data(void)
 {
     Edge_Status_t eEdgeDetect;
-    uint32_t u32CurrentEdgePulseDetectTime = sys_time_ms();
+    bool bCountChange = false;
 
-    eEdgeDetect = drv_pulse_edge_detect(PULSE1_READ);
-    if (eEdgeDetect == EDGE_NONE)
+    for (uint8_t i = 0; i < MAX_PULSE_GATE_COUNT; i++)
     {
-        if (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse1DetectTime >= PULSE_FREQUENCY_TIMEOUT)
+        if ((sPulseConfig[i].u8Pin1Select == 0) || (sPulseConfig[i].u8PulseType == 0) || (sPulseConfig[i].u8EdgeType == 0))
         {
-            sPulseFrequency.fPulse1Frequency = 0.0f;
+            continue;
         }
-    }
-    else
-    {
-        sPulseFrequency.fPulse1Frequency = 500.0f / (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse1DetectTime);
-        u32PreviousEdgePulse1DetectTime = u32CurrentEdgePulseDetectTime;
 
-        if (eEdgeDetect == EDGE_FALLING)
+        if (sPulseConfig[i].u8PulseType == PULSE_TYPE_SINGLE)
         {
-            pPulseCount->u64Pulse1Count++;
-        }
-    }
-
-    eEdgeDetect = drv_pulse_edge_detect(PULSE2_READ);
-    if (eEdgeDetect == EDGE_NONE)
-    {
-        if (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse2DetectTime >= PULSE_FREQUENCY_TIMEOUT)
-        {
-            sPulseFrequency.fPulse2Frequency = 0.0f;
-        }
-    }
-    else
-    {
-        sPulseFrequency.fPulse2Frequency = 500.0f / (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse2DetectTime);
-        u32PreviousEdgePulse2DetectTime = u32CurrentEdgePulseDetectTime;
-
-        if (eEdgeDetect == EDGE_FALLING)
-        {
-            pPulseCount->u64Pulse2Count++;
+            eEdgeDetect = drv_pulse_edge_detect(sPulseConfig[i].u8Pin1Select);
+            if (eEdgeDetect == sPulseConfig[i].u8EdgeType)
+            {
+                sPulseCount[i].u64ForwardPulseCount++;
+                bCountChange = true;
+            }
         }
     }
 
-    eEdgeDetect = drv_pulse_edge_detect(PULSE3_READ);
-    if (eEdgeDetect == EDGE_NONE)
+    if (bCountChange)
     {
-        if (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse3DetectTime >= PULSE_FREQUENCY_TIMEOUT)
-        {
-            sPulseFrequency.fPulse3Frequency = 0.0f;
-        }
+        u16PulseCountCrc = sys_crc16((uint8_t *)&sPulseCount, sizeof(sPulseCount));
     }
-    else
-    {
-        sPulseFrequency.fPulse3Frequency = 500.0f / (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse3DetectTime);
-        u32PreviousEdgePulse3DetectTime = u32CurrentEdgePulseDetectTime;
-
-        if (eEdgeDetect == EDGE_FALLING)
-        {
-            pPulseCount->u64Pulse3Count++;
-        }
-    }
-
-    eEdgeDetect = drv_pulse_edge_detect(PULSE4_READ);
-    if (eEdgeDetect == EDGE_NONE)
-    {
-        if (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse4DetectTime >= PULSE_FREQUENCY_TIMEOUT)
-        {
-            sPulseFrequency.fPulse4Frequency = 0.0f;
-        }
-    }
-    else
-    {
-        sPulseFrequency.fPulse4Frequency = 500.0f / (u32CurrentEdgePulseDetectTime - u32PreviousEdgePulse4DetectTime);
-        u32PreviousEdgePulse4DetectTime = u32CurrentEdgePulseDetectTime;
-
-        if (eEdgeDetect == EDGE_FALLING)
-        {
-            pPulseCount->u64Pulse4Count++;
-        }
-    }
-
-    *pPulseCountCrc = sys_crc16((uint8_t *)pPulseCount, sizeof(Pulse_Count_t));
 }
