@@ -74,6 +74,7 @@ set(FIRMWARE_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Driver/Internal
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Driver/External
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/Service
+    ${CMAKE_CURRENT_SOURCE_DIR}/Users/Application
 )
 
 # Link directories setup
