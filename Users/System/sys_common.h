@@ -4,18 +4,18 @@
 #include "stm32l4xx_hal_pwr.h"
 #include "stm32l4xx_hal_pwr_ex.h"
 
+#include "eeprom_layout.h"
 #include "flash_layout.h"
 #include "ram_noinit_layout.h"
 
 #include "sys_debug.h"
 
 #include <math.h>
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define CLAMP(x, l, h) ((x) < (l) ? (l) : ((x) > (h) ? (h) : (x)))
