@@ -1,6 +1,8 @@
 #include "drv_rtc.h"
 #include "rtc.h"
 
+#include "app_latch.h"
+
 static volatile uint16_t u16MinuteOfDay;
 
 /*==================================================================================================
@@ -108,5 +110,10 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
     if (u16MinuteOfDay >= MINUTES_PER_DAY)
     {
         u16MinuteOfDay = 0;
+    }
+
+    if (u16MinuteOfDay % app_storage_get_latch_period() == 0)
+    {
+        app_latch_activate();
     }
 }
