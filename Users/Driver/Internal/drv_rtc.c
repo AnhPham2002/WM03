@@ -1,7 +1,11 @@
 #include "drv_rtc.h"
 #include "rtc.h"
 
+#include "app_latch.h"
+
 #define RAM_NOINIT_DATE_TIME_MAGIC_NUMBER 0x87654321
+
+#define UPDATE_EEPROM_RUNTIME_DATA_PERIOD_MINUTES 10
 
 static volatile uint16_t u16MinuteOfDay;
 
@@ -129,5 +133,15 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
     if (u16MinuteOfDay >= MINUTES_PER_DAY)
     {
         u16MinuteOfDay = 0;
+    }
+
+    if (u16MinuteOfDay % UPDATE_EEPROM_RUNTIME_DATA_PERIOD_MINUTES == 0)
+    {
+        app_latch_runtime_data_update();
+    }
+
+    if (u16MinuteOfDay % app_storage_get_latch_period() == 0)
+    {
+        app_latch_activate();
     }
 }
