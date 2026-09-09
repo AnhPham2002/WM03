@@ -20,6 +20,15 @@
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define CLAMP(x, l, h) ((x) < (l) ? (l) : ((x) > (h) ? (h) : (x)))
 
+typedef enum
+{
+	TASK_STATUS_IDLE = 0,
+	TASK_STATUS_RUNNING,
+	TASK_STATUS_SUCCESS,
+	TASK_STATUS_FAILED,
+	TASK_STATUS_TIMEOUT
+} Task_Status_t;
+
 static inline void sys_delay_ms(uint32_t u32Delay)
 {
     HAL_Delay(u32Delay);
