@@ -100,7 +100,6 @@ void drv_rtc_get_date_time(Date_Time_t *pDateTime)
 
 void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 {
-    drv_led_blink();
     drv_wdt_refresh();
 }
 
