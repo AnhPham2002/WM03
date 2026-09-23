@@ -98,7 +98,6 @@ uint16_t drv_rtc_get_minutes_of_day(void)
 
 void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 {
-    drv_led_blink();
     drv_wdt_refresh();
 }
 
