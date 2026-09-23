@@ -124,7 +124,6 @@ bool drv_rtc_is_date_time_update_required(void)
 
 void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 {
-    drv_led_blink();
     drv_wdt_refresh();
 }
 
