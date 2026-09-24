@@ -3,6 +3,8 @@
 static uint32_t u32LastTimeAccess;
 static Protocol_Access_Level_t eProtocolCurrentLevel = ACCESS_LEVEL_1;
 
+static bool bOtaFinishUpdateFlag = false;
+
 static uint8_t au8ProtocolBuf[PROTOCOL_BUFFER_SIZE];
 static uint16_t u16ProtocolBufLen;
 
@@ -147,7 +149,21 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
  * @return Protocol error code.
  */
 static Protocol_Err_Code_t app_protocol_push_response_handler(uint8_t u8Id, const uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen);
-// static Protocol_Err_Code_t app_protocol_ota_handler(uint8_t u8Id, uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen);
+
+/**
+ * @brief Handle OTA request.
+ *
+ * Processes the OTA request and generates the corresponding response frame.
+ *
+ * @param[in]  u8Id            OTA ID.
+ * @param[in]  pRxPayload      Received request payload.
+ * @param[in]  u16RxPayloadLen Received payload size in bytes.
+ * @param[out] pTxFrame        Output response frame.
+ * @param[out] u16TxFrameLen   Output response frame size in bytes.
+ *
+ * @return Protocol error code.
+ */
+static Protocol_Err_Code_t app_protocol_ota_handler(uint8_t u8Id, uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen);
 
 /*==================================================================================================
 *                                   PUBLIC FUNCTIONS DEFINITIONS
@@ -158,6 +174,11 @@ void app_protocol_update(void)
     if (sys_time_ms() - u32LastTimeAccess >= PROTOCOL_ACCESS_TIMEOUT)
     {
         eProtocolCurrentLevel = ACCESS_LEVEL_1;
+    }
+
+    if (bOtaFinishUpdateFlag)
+    {
+        sys_reset();
     }
 }
 
@@ -300,9 +321,8 @@ Protocol_Err_Code_t app_protocol_process(Protocol_Data_Source_t eDataSource, con
     case CMD_PUSH:
         return app_protocol_push_response_handler(u8Id, pRxPayload, u16RxPayloadLen, pTxFrame, u16TxFrameLen);
 
-        // case CMD_OTA:
-        //     app_protocol_ota_handler(u8Id, pRxPayload, u16RxPayloadLen, pTxFrame, u16TxFrameLen);
-        //     break;
+    case CMD_OTA:
+        return app_protocol_ota_handler(u8Id, pRxPayload, u16RxPayloadLen, pTxFrame, u16TxFrameLen);
 
     default:
         app_protocol_pack_ack(u8Cmd, u8Id, PROTOCOL_ERR_CMD_INVALID, pTxFrame, u16TxFrameLen);
@@ -1905,5 +1925,152 @@ static Protocol_Err_Code_t app_protocol_push_response_handler(uint8_t u8Id, cons
         return PROTOCOL_ERR_FRAME_INVALID;
     }
 
+    return PROTOCOL_ERR_SUCCESS;
+}
+
+static Protocol_Err_Code_t app_protocol_ota_handler(uint8_t u8Id, uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen)
+{
+    bool bFailFlag = false;
+    uint8_t au8TxPayload[1024];
+    uint8_t *pTx = au8TxPayload;
+    uint8_t *pRx = pRxPayload;
+
+    switch (u8Id)
+    {
+    case OTA_UPDATE_REQUEST:
+    {
+        Firmware_Metadata_t sCurrentFirmwareMetadata;
+        Firmware_Metadata_t sNextFirmwareMetadata = {0};
+        uint16_t u16PacketIndexRequest = 0;
+        uint32_t u32SizeSlotA;
+        uint32_t u32CrcSlotA;
+        uint32_t u32SizeSlotB;
+        uint32_t u32CrcSlotB;
+
+        memcpy(sNextFirmwareMetadata.au8Version, pRx, VERSION_SIZE);
+        pRx += VERSION_SIZE;
+
+        memcpy(&u32SizeSlotA, pRx, sizeof(u32SizeSlotA));
+        pRx += sizeof(u32SizeSlotA);
+        memcpy(&u32CrcSlotA, pRx, sizeof(u32CrcSlotA));
+        pRx += sizeof(u32CrcSlotA);
+
+        memcpy(&u32SizeSlotB, pRx, sizeof(u32SizeSlotB));
+        pRx += sizeof(u32SizeSlotB);
+        memcpy(&u32CrcSlotB, pRx, sizeof(u32CrcSlotB));
+        pRx += sizeof(u32CrcSlotB);
+
+        sNextFirmwareMetadata.eStatus = FIRMWARE_UPDATING;
+
+        uint32_t u32NextFirmwareMetadataAddress;
+        uint32_t u32NextFirmwareAddress;
+
+        if (sys_get_vector_table_address() == SLOT_A_START_ADDR)
+        {
+            sv_flash_read(SLOT_A_METADATA_ADDR, (uint8_t *)&sCurrentFirmwareMetadata, sizeof(sCurrentFirmwareMetadata));
+            u32NextFirmwareMetadataAddress = SLOT_B_METADATA_ADDR;
+            u32NextFirmwareAddress = SLOT_B_START_ADDR;
+            sNextFirmwareMetadata.u32Size = u32SizeSlotB;
+            sNextFirmwareMetadata.u32Crc = u32CrcSlotB;
+        }
+        else
+        {
+            sv_flash_read(SLOT_B_METADATA_ADDR, (uint8_t *)&sCurrentFirmwareMetadata, sizeof(sCurrentFirmwareMetadata));
+            u32NextFirmwareMetadataAddress = SLOT_A_METADATA_ADDR;
+            u32NextFirmwareAddress = SLOT_A_START_ADDR;
+            sNextFirmwareMetadata.u32Size = u32SizeSlotA;
+            sNextFirmwareMetadata.u32Crc = u32CrcSlotA;
+        }
+
+        if (sNextFirmwareMetadata.u32Size > FIRMWARE_MAX_SIZE)
+        {
+            *pTx++ = OTA_REQUEST_SLOT_NONE; // No update
+            memcpy(pTx, &u16PacketIndexRequest, sizeof(u16PacketIndexRequest));
+            pTx += sizeof(u16PacketIndexRequest);
+        }
+        else
+        {
+            if (sys_get_vector_table_address() == SLOT_A_START_ADDR)
+            {
+                *pTx++ = OTA_REQUEST_SLOT_B; // Slot B request
+                memcpy(pTx, &u16PacketIndexRequest, sizeof(u16PacketIndexRequest));
+                pTx += sizeof(u16PacketIndexRequest);
+            }
+            else
+            {
+                *pTx++ = OTA_REQUEST_SLOT_A; // Slot A request
+                memcpy(pTx, &u16PacketIndexRequest, sizeof(u16PacketIndexRequest));
+                pTx += sizeof(u16PacketIndexRequest);
+            }
+
+            sNextFirmwareMetadata.u32Sequence = sCurrentFirmwareMetadata.u32Sequence + 1;
+            sv_flash_erase(u32NextFirmwareMetadataAddress, METADATA_MAX_SIZE);
+            sv_flash_write(u32NextFirmwareMetadataAddress, (const uint8_t *)&sNextFirmwareMetadata, sizeof(sNextFirmwareMetadata));
+            sv_flash_erase(u32NextFirmwareAddress, FIRMWARE_MAX_SIZE);
+        }
+
+        break;
+    }
+
+    case OTA_SEND_PACKET:
+    {
+        uint16_t u16PacketIndex;
+        uint16_t u16PacketSize;
+        Firmware_Metadata_t sFirmwareMetadata;
+
+        memcpy(&u16PacketIndex, pRx, sizeof(u16PacketIndex));
+        pRx += sizeof(u16PacketIndex);
+        memcpy(&u16PacketSize, pRx, sizeof(u16PacketSize));
+        pRx += sizeof(u16PacketSize);
+
+        uint32_t u32OtaStartAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_START_ADDR : SLOT_A_START_ADDR;
+
+        sv_flash_write(u32OtaStartAddress + (u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE), pRx, u16PacketSize);
+
+        memcpy(pTx, &u16PacketIndex, sizeof(u16PacketIndex));
+        pTx += sizeof(u16PacketIndex);
+
+        uint32_t u32OtaMetadataAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_METADATA_ADDR : SLOT_A_METADATA_ADDR;
+        sv_flash_read(u32OtaMetadataAddress, (uint8_t *)&sFirmwareMetadata, sizeof(sFirmwareMetadata));
+
+        if ((u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE) + u16PacketSize == sFirmwareMetadata.u32Size)
+        {
+            if (sv_flash_crc32(u32OtaStartAddress, sFirmwareMetadata.u32Size) != sFirmwareMetadata.u32Crc)
+            {
+                *pTx++ = PROTOCOL_ERR_FW_CRC32_FAILED;
+            }
+            else
+            {
+                sv_flash_erase(u32OtaMetadataAddress, METADATA_MAX_SIZE);
+                sFirmwareMetadata.eStatus = FIRMWARE_PENDING;
+                sv_flash_write(u32OtaMetadataAddress, (const uint8_t *)&sFirmwareMetadata, sizeof(sFirmwareMetadata));
+                bOtaFinishUpdateFlag = true;
+                *pTx++ = PROTOCOL_ERR_SUCCESS;
+            }
+        }
+        else if ((u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE) + u16PacketSize > sFirmwareMetadata.u32Size)
+        {
+            *pTx++ = PROTOCOL_ERR_UNKNOW;
+        }
+        else
+        {
+            *pTx++ = PROTOCOL_ERR_SUCCESS;
+        }
+
+        break;
+    }
+
+    default:
+        bFailFlag = true;
+        break;
+    }
+
+    if (bFailFlag)
+    {
+        app_protocol_pack_ack(CMD_PUSH, u8Id, PROTOCOL_ERR_FRAME_INVALID, pTxFrame, u16TxFrameLen);
+        return PROTOCOL_ERR_FRAME_INVALID;
+    }
+
+    sv_protocol_pack(true, app_storage_get_module_serial(), CMD_OTA, u8Id, au8TxPayload, pTx - au8TxPayload, pTxFrame, u16TxFrameLen);
     return PROTOCOL_ERR_SUCCESS;
 }

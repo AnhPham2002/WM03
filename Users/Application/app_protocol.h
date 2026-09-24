@@ -9,6 +9,8 @@
 
 #define PROTOCOL_MAX_PACK_EVENT_COUNT 20
 
+#define PROTOCOL_MAX_OTA_PACKET_SIZE 1024
+
 #define PROTOCOL_BUFFER_SIZE 2048
 
 typedef enum
@@ -80,6 +82,13 @@ typedef enum
     CONFIG_PRESSURE_SENSOR_MIN_PRESSURE,
     CONFIG_PRESSURE_SENSOR_MAX_PRESSURE
 } Config_Pressure_Sensor_Id_t;
+
+typedef enum
+{
+    OTA_REQUEST_SLOT_NONE = 0,
+    OTA_REQUEST_SLOT_A,
+    OTA_REQUEST_SLOT_B
+} Ota_Request_Slot_t;
 
 /**
  * @brief Update protocol status and process pending requests.
