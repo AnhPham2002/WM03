@@ -44,5 +44,10 @@ static inline void sys_reset(void)
 	HAL_NVIC_SystemReset();
 }
 
+static inline uint32_t sys_get_vector_table_address(void)
+{
+	return SCB->VTOR;
+}
+
 uint16_t sys_crc16(const uint8_t *pData, uint16_t u16Size);
 void sys_sleep(void);

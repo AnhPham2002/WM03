@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #define FLASH_MAGIC_NUMBER			0x5555AAAAUL
 
 #define BOOTLOADER_START_ADDR		0x08000000UL      // 32252 bytes
@@ -12,3 +14,20 @@
 
 #define METADATA_MAX_SIZE			(2*1024)
 #define FIRMWARE_MAX_SIZE			(110*1024)
+
+typedef enum
+{
+    FIRMWARE_VALID = 0,
+    FIRMWARE_INVALID,
+    FIRMWARE_UPDATING,
+    FIRMWARE_PENDING
+} Firmware_Status_t;
+
+typedef struct
+{
+    uint32_t u32Sequence;
+    uint8_t au8Version[12];
+    Firmware_Status_t eStatus;
+    uint32_t u32Size;
+    uint32_t u32Crc;
+} Firmware_Metadata_t;
