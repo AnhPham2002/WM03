@@ -14,6 +14,8 @@ BOOT_ELF_RELEASE := $(BUILD_DIR)/Release/Boot/WM03_BOOT.elf
 APPA_ELF_RELEASE := $(BUILD_DIR)/Release/App_A/WM03_APP_A.elf
 APPB_ELF_RELEASE := $(BUILD_DIR)/Release/App_B/WM03_APP_B.elf
 
+FIRMWARE_BIN_FLASH := $(BUILD_DIR)/Release/WM03_Firmware_Flash.bin
+
 .PHONY: all
 all: clean build
 
@@ -26,7 +28,8 @@ all: clean build
 		build-app-a-d build-app-a-r \
 		build-app-b-d build-app-b-r
 
-build: build-d build-r
+build: build-r
+	python pack_firmware.py
 
 build-d: build-boot-d build-app-a-d build-app-b-d
 
@@ -78,15 +81,20 @@ build-app-b-r:
 # Flash: (default: boot + app_a (release))
 # ============================================================
 
-.PHONY: flash
-flash: build-r
-# 	STM32_Programmer_CLI -c port=SWD mode=UR -e all
+.PHONY: flash flash-r flash-d
+flash: build
+	STM32_Programmer_CLI -c port=SWD mode=UR -e all
+	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(FIRMWARE_BIN_FLASH)" 0x08000000 -v
+	STM32_Programmer_CLI -c port=SWD -rst
+
+flash-r: build-r
+	STM32_Programmer_CLI -c port=SWD mode=UR -e all
 	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(BOOT_ELF_RELEASE)" -v
 	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(APPA_ELF_RELEASE)" -v
 	STM32_Programmer_CLI -c port=SWD -rst
 
 flash-d: build-d
-# 	STM32_Programmer_CLI -c port=SWD mode=UR -e all
+	STM32_Programmer_CLI -c port=SWD mode=UR -e all
 	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(BOOT_ELF_DEBUG)" -v
 	STM32_Programmer_CLI -c port=SWD mode=UR -w "$(APPA_ELF_DEBUG)" -v
 	STM32_Programmer_CLI -c port=SWD -rst
