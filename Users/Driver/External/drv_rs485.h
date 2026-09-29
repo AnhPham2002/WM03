@@ -3,8 +3,8 @@
 #include "drv_uart.h"
 #include "drv_gpio.h"
 
-#define PWR485_PIN GPIOC, GPIO_PIN_10
-#define DE485_PIN GPIOB, GPIO_PIN_4
+#define PWR485_PIN GPIOB, GPIO_PIN_4
+#define DE485_PIN GPIOB, GPIO_PIN_5
 
 /**
  * @brief Initialize RS485.

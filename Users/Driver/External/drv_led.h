@@ -2,7 +2,8 @@
 
 #include "drv_gpio.h"
 
-#define LED_PIN GPIOA, GPIO_PIN_15
+#define LED1_PIN GPIOC, GPIO_PIN_7
+#define LED2_PIN GPIOC, GPIO_PIN_9
 
 /**
  * @brief Turn on the LED.

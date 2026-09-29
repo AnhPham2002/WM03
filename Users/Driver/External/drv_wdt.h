@@ -2,7 +2,7 @@
 
 #include "setting.h"
 
-#define WDI_PIN GPIOC, GPIO_PIN_13
+#define WDI_PIN GPIOA, GPIO_PIN_1
 
 #define WDT_MAX_REFRESH_COUNT 50
 

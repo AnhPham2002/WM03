@@ -3,8 +3,8 @@
 #include "drv_uart.h"
 #include "drv_gpio.h"
 
-#define CELLULAR_PWR_PIN GPIOC, GPIO_PIN_3
-#define CELLULAR_KEY_PIN GPIOB, GPIO_PIN_0
+#define CELLULAR_PWR_PIN GPIOB, GPIO_PIN_0
+#define CELLULAR_KEY_PIN GPIOB, GPIO_PIN_1
 #define CELLULAR_RST_PIN GPIOB, GPIO_PIN_2
 
 #define CELLULAR_TIME_ON 50

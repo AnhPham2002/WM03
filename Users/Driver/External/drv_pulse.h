@@ -13,7 +13,10 @@
 #define PULSE2_IN_PIN GPIOA, GPIO_PIN_9
 #define PULSE3_IN_PIN GPIOA, GPIO_PIN_10
 #define PULSE4_IN_PIN GPIOA, GPIO_PIN_11
-#define PULSE_EN_PIN GPIOC, GPIO_PIN_9
+#define PULSE1_EN_PIN GPIOB, GPIO_PIN_12
+#define PULSE2_EN_PIN GPIOB, GPIO_PIN_13
+#define PULSE3_EN_PIN GPIOB, GPIO_PIN_14
+#define PULSE4_EN_PIN GPIOB, GPIO_PIN_15
 
 /** @defgroup PULSE_TYPE Pulse Type
  *  @brief Pulse input type definitions.

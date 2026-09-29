@@ -4,8 +4,8 @@
 #include "drv_i2c.h"
 #include "sys_common.h"
 
-#define PWR_EXT_ADC_PIN GPIOB, GPIO_PIN_5
-#define PWR_SS_PIN GPIOB, GPIO_PIN_3
+#define PWR_EXT_ADC_PIN GPIOB, GPIO_PIN_3
+#define PWR_SS_PIN GPIOC, GPIO_PIN_11
 #define EN_SS1_PIN GPIOD, GPIO_PIN_2
 #define EN_SS2_PIN GPIOC, GPIO_PIN_12
 
