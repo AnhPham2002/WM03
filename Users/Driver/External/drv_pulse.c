@@ -16,14 +16,44 @@ static volatile uint16_t *const pPulseCountCrc = (volatile uint16_t *)RAM_NOINIT
 ==================================================================================================*/
 
 /**
- * @brief Enable pulse reading.
+ * @brief Enable pulse input 1 reading.
  */
-static inline void drv_pulse_read_enable(void);
+static inline void drv_pulse1_read_enable(void);
 
 /**
- * @brief Disable pulse reading.
+ * @brief Disable pulse input 1 reading.
  */
-static inline void drv_pulse_read_disable(void);
+static inline void drv_pulse1_read_disable(void);
+
+/**
+ * @brief Enable pulse input 2 reading.
+ */
+static inline void drv_pulse2_read_enable(void);
+
+/**
+ * @brief Disable pulse input 2 reading.
+ */
+static inline void drv_pulse2_read_disable(void);
+
+/**
+ * @brief Enable pulse input 3 reading.
+ */
+static inline void drv_pulse3_read_enable(void);
+
+/**
+ * @brief Disable pulse input 3 reading.
+ */
+static inline void drv_pulse3_read_disable(void);
+
+/**
+ * @brief Enable pulse input 4 reading.
+ */
+static inline void drv_pulse4_read_enable(void);
+
+/**
+ * @brief Disable pulse input 4 reading.
+ */
+static inline void drv_pulse4_read_disable(void);
 
 /**
  * @brief Read pulse input 1.
@@ -76,13 +106,19 @@ static void drv_pulse_update_data(void);
 
 void drv_pulse_init(void)
 {
-    drv_pulse_read_enable();
+    drv_pulse1_read_enable();
+    drv_pulse2_read_enable();
+    drv_pulse3_read_enable();
+    drv_pulse4_read_enable();
     sys_delay_ms(1); // Delay for capacitor charge
     bPreviousPulse1Status = drv_pulse1_read();
     bPreviousPulse2Status = drv_pulse2_read();
     bPreviousPulse3Status = drv_pulse3_read();
     bPreviousPulse4Status = drv_pulse4_read();
-    drv_pulse_read_disable();
+    drv_pulse1_read_disable();
+    drv_pulse2_read_disable();
+    drv_pulse3_read_disable();
+    drv_pulse4_read_disable();
 
     drv_timer1_low_power_init(PULSE_READ_PERIOD);
 }
@@ -103,12 +139,18 @@ void drv_pulse_interrupt_handler(bool bReadable)
 {
     if (!bReadable)
     {
-        drv_pulse_read_enable();
+        drv_pulse1_read_enable();
+        drv_pulse2_read_enable();
+        drv_pulse3_read_enable();
+        drv_pulse4_read_enable();
     }
     else
     {
         drv_pulse_update_data();
-        drv_pulse_read_disable();
+        drv_pulse1_read_disable();
+        drv_pulse2_read_disable();
+        drv_pulse3_read_disable();
+        drv_pulse4_read_disable();
     }
 }
 
@@ -155,14 +197,44 @@ bool drv_pulse_get_data(uint8_t u8Index, Pulse_Data_t *pData)
 *                                   PRIVATE FUNCTIONS DEFINITIONS
 ==================================================================================================*/
 
-static inline void drv_pulse_read_enable(void)
+static inline void drv_pulse1_read_enable(void)
 {
-    drv_gpio_write(PULSE_EN_PIN, 1);
+    drv_gpio_write(PULSE1_EN_PIN, 0);
 }
 
-static inline void drv_pulse_read_disable(void)
+static inline void drv_pulse1_read_disable(void)
 {
-    drv_gpio_write(PULSE_EN_PIN, 0);
+    drv_gpio_write(PULSE1_EN_PIN, 1);
+}
+
+static inline void drv_pulse2_read_enable(void)
+{
+    drv_gpio_write(PULSE2_EN_PIN, 0);
+}
+
+static inline void drv_pulse2_read_disable(void)
+{
+    drv_gpio_write(PULSE2_EN_PIN, 1);
+}
+
+static inline void drv_pulse3_read_enable(void)
+{
+    drv_gpio_write(PULSE3_EN_PIN, 0);
+}
+
+static inline void drv_pulse3_read_disable(void)
+{
+    drv_gpio_write(PULSE3_EN_PIN, 1);
+}
+
+static inline void drv_pulse4_read_enable(void)
+{
+    drv_gpio_write(PULSE4_EN_PIN, 0);
+}
+
+static inline void drv_pulse4_read_disable(void)
+{
+    drv_gpio_write(PULSE4_EN_PIN, 1);
 }
 
 static inline bool drv_pulse1_read(void)
