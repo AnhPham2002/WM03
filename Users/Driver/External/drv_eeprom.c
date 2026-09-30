@@ -72,9 +72,9 @@ void drv_eeprom_init(void)
     drv_eeprom_write_status_reg(u8StatusReg);
 }
 
-bool drv_eeprom_read_data(uint16_t u16Address, uint8_t *pData, uint16_t u16Size)
+bool drv_eeprom_read_data(uint32_t u32Address, uint8_t *pData, uint32_t u32Size)
 {
-    if ((pData == NULL) || (u16Size == 0) || (u16Address + u16Size > EE_TOTAL_SIZE))
+    if ((pData == NULL) || (u32Size == 0) || (u32Address + u32Size > EE_TOTAL_SIZE))
     {
         return false;
     }
@@ -88,19 +88,30 @@ bool drv_eeprom_read_data(uint16_t u16Address, uint8_t *pData, uint16_t u16Size)
         }
     }
 
-    uint8_t au8TxBuf[] = {EE_CMD_READ, (uint8_t)(u16Address >> 8), (uint8_t)(u16Address & 0xFF)};
+    uint8_t au8TxBuf[] = {EE_CMD_READ, (uint8_t)(u32Address >> 16), (uint8_t)(u32Address >> 8), (uint8_t)u32Address};
 
     drv_eeprom_select();
+
     drv_spi_send(au8TxBuf, sizeof(au8TxBuf));
-    drv_spi_receive(pData, u16Size);
+
+    uint32_t u32Read = 0;
+    while (u32Read < u32Size)
+    {
+        uint16_t u16ReadThisTime = (u32Size - u32Read > UINT16_MAX) ? UINT16_MAX : (uint16_t)(u32Size - u32Read);
+
+        drv_spi_receive(&pData[u32Read], u16ReadThisTime);
+
+        u32Read += u16ReadThisTime;
+    }
+
     drv_eeprom_deselect();
 
     return true;
 }
 
-bool drv_eeprom_write_data(uint16_t u16Address, const uint8_t *pData, uint16_t u16Size)
+bool drv_eeprom_write_data(uint32_t u32Address, const uint8_t *pData, uint32_t u32Size)
 {
-    if ((pData == NULL) || (u16Size == 0) || (u16Address + u16Size > EE_TOTAL_SIZE))
+    if ((pData == NULL) || (u32Size == 0) || (u32Address + u32Size > EE_TOTAL_SIZE))
     {
         return false;
     }
@@ -114,29 +125,28 @@ bool drv_eeprom_write_data(uint16_t u16Address, const uint8_t *pData, uint16_t u
         }
     }
 
-    uint16_t u16Writed = 0; // Number of bytes successfully written
+    uint32_t u32Written = 0;
 
-    while (u16Writed < u16Size)
+    while (u32Written < u32Size)
     {
-        uint16_t u16WritableThisPage = EE_PAGE_SIZE - (u16Address % EE_PAGE_SIZE);                                               // Calculate remaining writable bytes in current page
-        uint16_t u16WriteThisPage = ((u16Size - u16Writed) > u16WritableThisPage) ? u16WritableThisPage : (u16Size - u16Writed); // Determine how many bytes to write in this page cycle
+        uint32_t u32WritableThisPage = EE_PAGE_SIZE - (u32Address % EE_PAGE_SIZE);
+        uint32_t u32WriteThisPage = ((u32Size - u32Written) < u32WritableThisPage) ? (u32Size - u32Written) : u32WritableThisPage;
 
-        // Prepare transmit buffer: Command + Address + Data
         uint8_t au8TxBuf[EE_CMD_SIZE + EE_ADDR_SIZE + EE_PAGE_SIZE];
-        au8TxBuf[0] = EE_CMD_WRITE;
-        au8TxBuf[1] = (uint8_t)((u16Address & 0xFF00) >> 8);
-        au8TxBuf[2] = (uint8_t)(u16Address & 0x00FF);
-        for (uint16_t i = 0; i < u16WriteThisPage; i++) // Copy chunk of data into transmit buffer
-        {
-            au8TxBuf[EE_CMD_SIZE + EE_ADDR_SIZE + i] = pData[u16Writed + i];
-        }
 
-        drv_eeprom_write_enable(); // Enable write operation on EEPROM
+        au8TxBuf[0] = EE_CMD_WRITE;
+        au8TxBuf[1] = (uint8_t)(u32Address >> 16);
+        au8TxBuf[2] = (uint8_t)(u32Address >> 8);
+        au8TxBuf[3] = (uint8_t)u32Address;
+
+        memcpy(&au8TxBuf[EE_CMD_SIZE + EE_ADDR_SIZE], &pData[u32Written], u32WriteThisPage);
+
+        drv_eeprom_write_enable();
+
         drv_eeprom_select();
-        drv_spi_send(au8TxBuf, EE_CMD_SIZE + EE_ADDR_SIZE + u16WriteThisPage);
+        drv_spi_send(au8TxBuf, (uint16_t)(EE_CMD_SIZE + EE_ADDR_SIZE + u32WriteThisPage));
         drv_eeprom_deselect();
 
-        // Wait until EEPROM completes internal write cycle
         if (drv_eeprom_is_busy())
         {
             sys_delay_ms(EE_WAIT_TIMEOUT);
@@ -146,9 +156,8 @@ bool drv_eeprom_write_data(uint16_t u16Address, const uint8_t *pData, uint16_t u
             }
         }
 
-        // Update counters and next address
-        u16Writed += u16WriteThisPage;
-        u16Address += u16WriteThisPage;
+        u32Written += u32WriteThisPage;
+        u32Address += u32WriteThisPage;
     }
 
     return true;
