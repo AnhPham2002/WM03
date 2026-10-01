@@ -39,7 +39,7 @@ bool sv_cellular_on(void)
     sys_delay_ms(50); // Wait for charge capacitor
     drv_cellular_turn_on();
 
-    const char *pKeywords[] = {"\r\nQCRDY\r\n"};
+    const char *pKeywords[] = {"ATREADY"};
     if (!sv_cellular_wait_for_keywords(pKeywords, ARRAY_SIZE(pKeywords), AT_COMMAND_RESPONSE_TIMEOUT_NORMAL))
     {
         drv_cellular_pwr_off();
