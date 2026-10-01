@@ -51,6 +51,9 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, CHG_EN_Pin|EN_SS2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(WDI_GPIO_Port, WDI_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
@@ -67,10 +70,22 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, LED1_Pin|LED2_Pin|PWR_SS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(EN_SS2_GPIO_Port, EN_SS2_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(EN_SS1_GPIO_Port, EN_SS1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : CHG_INT_Pin */
+  GPIO_InitStruct.Pin = CHG_INT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(CHG_INT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : CHG_EN_Pin LED1_Pin LED2_Pin PWR_SS_Pin
+                           EN_SS2_Pin */
+  GPIO_InitStruct.Pin = CHG_EN_Pin|LED1_Pin|LED2_Pin|PWR_SS_Pin
+                          |EN_SS2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SYS_WKUP_Pin PULSE1_IN_Pin PULSE2_IN_Pin PULSE3_IN_Pin
                            PULSE4_IN_Pin */
@@ -97,13 +112,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : LED1_Pin LED2_Pin PWR_SS_Pin EN_SS2_Pin */
-  GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin|PWR_SS_Pin|EN_SS2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : EN_SS1_Pin */
   GPIO_InitStruct.Pin = EN_SS1_Pin;
