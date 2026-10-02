@@ -626,6 +626,53 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
         break;
     }
 
+    case CONFIG_CHARGE:
+    {
+        Charge_Config_Parameter_t sChargeConfig;
+
+        if (u16RxPayloadLen == 0)
+        {
+            bFailFlag = true;
+            break;
+        }
+
+        app_storage_get_charge_config(&sChargeConfig);
+
+        for (uint16_t i = 0; i < u16RxPayloadLen; i++)
+        {
+            *p++ = pRxPayload[i];
+
+            switch (pRxPayload[i])
+            {
+            case CONFIG_CHARGE_IINLIM:
+                memcpy(p, &sChargeConfig.u16IinLimMa, sizeof(sChargeConfig.u16IinLimMa));
+                p += sizeof(sChargeConfig.u16IinLimMa);
+                break;
+
+            case CONFIG_CHARGE_VOLTAGE:
+                memcpy(p, &sChargeConfig.u16ChargeVoltageMv, sizeof(sChargeConfig.u16ChargeVoltageMv));
+                p += sizeof(sChargeConfig.u16ChargeVoltageMv);
+                break;
+
+            case CONFIG_CHARGE_CURRENT:
+                memcpy(p, &sChargeConfig.u16ChargeCurrentMa, sizeof(sChargeConfig.u16ChargeCurrentMa));
+                p += sizeof(sChargeConfig.u16ChargeCurrentMa);
+                break;
+
+            case CONFIG_CHARGE_LED:
+                memcpy(p, &sChargeConfig.u8ChargeLedEnable, sizeof(sChargeConfig.u8ChargeLedEnable));
+                p += sizeof(sChargeConfig.u8ChargeLedEnable);
+                break;
+
+            default:
+                bFailFlag = true;
+                break;
+            }
+        }
+
+        break;
+    }
+
     case CONFIG_PULSE_METER:
     {
         Pulse_Meter_Config_Parameter_t sPulseMeterConfig;
@@ -1028,6 +1075,85 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         if (!bFailFlag)
         {
             app_storage_set_module_config(&sModuleConfig);
+        }
+
+        break;
+    }
+
+    case CONFIG_CHARGE:
+    {
+        Charge_Config_Parameter_t sChargeConfig;
+
+        if (u16RxPayloadLen == 0)
+        {
+            bFailFlag = true;
+            break;
+        }
+
+        if (!app_storage_get_charge_config(&sChargeConfig))
+        {
+            bFailFlag = true;
+            break;
+        }
+
+        while ((uint16_t)(p - pRxPayload) < u16RxPayloadLen)
+        {
+            switch (*p++)
+            {
+            case CONFIG_CHARGE_IINLIM:
+                if ((uint16_t)(p - pRxPayload) + sizeof(sChargeConfig.u16IinLimMa) > u16RxPayloadLen)
+                {
+                    bFailFlag = true;
+                    break;
+                }
+                memcpy(&sChargeConfig.u16IinLimMa, p, sizeof(sChargeConfig.u16IinLimMa));
+                p += sizeof(sChargeConfig.u16IinLimMa);
+                break;
+
+            case CONFIG_CHARGE_VOLTAGE:
+                if ((uint16_t)(p - pRxPayload) + sizeof(sChargeConfig.u16ChargeVoltageMv) > u16RxPayloadLen)
+                {
+                    bFailFlag = true;
+                    break;
+                }
+                memcpy(&sChargeConfig.u16ChargeVoltageMv, p, sizeof(sChargeConfig.u16ChargeVoltageMv));
+                p += sizeof(sChargeConfig.u16ChargeVoltageMv);
+                break;
+
+            case CONFIG_CHARGE_CURRENT:
+                if ((uint16_t)(p - pRxPayload) + sizeof(sChargeConfig.u16ChargeCurrentMa) > u16RxPayloadLen)
+                {
+                    bFailFlag = true;
+                    break;
+                }
+                memcpy(&sChargeConfig.u16ChargeCurrentMa, p, sizeof(sChargeConfig.u16ChargeCurrentMa));
+                p += sizeof(sChargeConfig.u16ChargeCurrentMa);
+                break;
+
+            case CONFIG_CHARGE_LED:
+                if ((uint16_t)(p - pRxPayload) + sizeof(sChargeConfig.u8ChargeLedEnable) > u16RxPayloadLen)
+                {
+                    bFailFlag = true;
+                    break;
+                }
+                memcpy(&sChargeConfig.u8ChargeLedEnable, p, sizeof(sChargeConfig.u8ChargeLedEnable));
+                p += sizeof(sChargeConfig.u8ChargeLedEnable);
+                break;
+
+            default:
+                bFailFlag = true;
+                break;
+            }
+
+            if (bFailFlag)
+            {
+                break;
+            }
+        }
+
+        if (!bFailFlag)
+        {
+            app_storage_set_charge_config(&sChargeConfig);
         }
 
         break;
