@@ -13,6 +13,7 @@ static Eeprom_Runtime_Data_Area_t eNextEepromRuntimeDataLocation;
 
 static Ip_Endpoint_t sIpEndpoint;
 static Module_Config_Parameter_t sModuleConfig;
+static Charge_Config_Parameter_t sChargeConfig;
 static Pulse_Meter_Config_Parameter_t sPulseMeterConfig[MAX_PULSE_METER_COUNT];
 static Modbus_Meter_Config_Parameter_t sModbusMeterConfig[MAX_MODBUS_METER_COUNT];
 static Pressure_Sensor_Config_Parameter_t sPressureSensorConfig[MAX_PRESSURE_SENSOR_COUNT];
@@ -104,6 +105,9 @@ void app_storage_init(void)
 
     // Load module serial
     app_storage_module_serial_load();
+
+    // Charge config
+    sv_charge_init(sChargeConfig.u16IinLimMa, sChargeConfig.u16ChargeVoltageMv, sChargeConfig.u16ChargeCurrentMa, sChargeConfig.u8ChargeLedEnable != 0);
 
     // Load pulse count data to pulse meter
     Pulse_Count_t sPulseCount[MAX_PULSE_GATE_COUNT];
@@ -533,6 +537,39 @@ bool app_storage_get_module_config(Module_Config_Parameter_t *pConfig)
     return true;
 }
 
+bool app_storage_set_charge_config(const Charge_Config_Parameter_t *pConfig)
+{
+    if (pConfig == NULL)
+    {
+        return false;
+    }
+
+    memcpy(&sChargeConfig, pConfig, sizeof(Charge_Config_Parameter_t));
+    sv_charge_set_input_current_limit(sChargeConfig.u16IinLimMa);
+    sv_charge_set_charge_voltage(sChargeConfig.u16ChargeVoltageMv);
+    sv_charge_set_fast_charge_current(sChargeConfig.u16ChargeCurrentMa);
+    if (sChargeConfig.u8ChargeLedEnable)
+    {
+        sv_charge_turn_on_led_status();
+    }
+    else
+    {
+        sv_charge_turn_off_led_status();
+    }
+    return sv_eeprom_write(EEPROM_CHARGE_CONFIG_ADDRESS, (const uint8_t *)&sChargeConfig, sizeof(sChargeConfig));
+}
+
+bool app_storage_get_charge_config(Charge_Config_Parameter_t *pConfig)
+{
+    if (pConfig == NULL)
+    {
+        return false;
+    }
+
+    memcpy(pConfig, &sChargeConfig, sizeof(Charge_Config_Parameter_t));
+    return true;
+}
+
 bool app_storage_set_pulse_meter_config(uint8_t u8MeterIndex, const Pulse_Meter_Config_Parameter_t *pConfig)
 {
     if ((u8MeterIndex >= MAX_PULSE_METER_COUNT) || (pConfig == NULL))
@@ -611,6 +648,12 @@ void app_storage_config_parameter_default(void)
     sModuleConfig.u16PushPeriod = PUSH_PERIOD;
     sModuleConfig.fTimezone = TIMEZONE;
     sv_eeprom_write(EEPROM_MODULE_CONFIG_ADDRESS, (const uint8_t *)&sModuleConfig, sizeof(sModuleConfig));
+
+    sChargeConfig.u16IinLimMa = CHARGE_IINLIM_MA;
+    sChargeConfig.u16ChargeVoltageMv = CHARGE_VOLTAGE_MV;
+    sChargeConfig.u16ChargeCurrentMa = CHARGE_CURRENT_MA;
+    sChargeConfig.u8ChargeLedEnable = CHARGE_LED_ENABLE;
+    sv_eeprom_write(EEPROM_CHARGE_CONFIG_ADDRESS, (const uint8_t *)&sChargeConfig, sizeof(sChargeConfig));
 
     for (uint8_t i = 0; i < MAX_PULSE_METER_COUNT; i++)
     {
@@ -1052,6 +1095,7 @@ static void app_storage_config_parameter_load(void)
 {
     sv_eeprom_read(EEPROM_IP_ENDPOINT_ADDRESS, (uint8_t *)&sIpEndpoint, sizeof(sIpEndpoint));
     sv_eeprom_read(EEPROM_MODULE_CONFIG_ADDRESS, (uint8_t *)&sModuleConfig, sizeof(sModuleConfig));
+    sv_eeprom_read(EEPROM_CHARGE_CONFIG_ADDRESS, (uint8_t *)&sChargeConfig, sizeof(sChargeConfig));
     sv_eeprom_read(EEPROM_PULSE_METER_CONFIG_ADDRESS, (uint8_t *)sPulseMeterConfig, sizeof(sPulseMeterConfig));
     sv_eeprom_read(EEPROM_MODBUS_METER_CONFIG_ADDRESS, (uint8_t *)sModbusMeterConfig, sizeof(sModbusMeterConfig));
     sv_eeprom_read(EEPROM_PRESSURE_SENSOR_CONFIG_ADDRESS, (uint8_t *)sPressureSensorConfig, sizeof(sPressureSensorConfig));
