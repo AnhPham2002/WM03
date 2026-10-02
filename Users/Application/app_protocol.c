@@ -219,11 +219,16 @@ bool app_protocol_pack_push_info(uint8_t *pFrame, uint16_t *u16FrameLen)
     *p++ = s8Rsrq;
     *p++ = s8Rssnr;
 
-    // bool bInputPowerStatus;
-    // float fBatteryVoltage;
-    // app_power_supply_get_info(&bInputPowerStatus, &fBatteryVoltage);
-    // *p++ = (bInputPowerStatus == true) ? 0x01 : 0x00;
-    // *p++ = (uint8_t)(fBatteryVoltage * 10.0f + 0.5f);
+    uint8_t u8VbusStatus;
+    sv_charge_get_vbus_status(&u8VbusStatus);
+    *p++ = (u8VbusStatus == CHG_VBUS_STAT_NO_INPUT) ? 0x00 : 0x01;
+
+    uint16_t u16BatteryVoltageMv;
+    sv_charge_start_adc_conversion();
+    sys_delay_ms(50); // Delay for conversion
+    sv_charge_get_battery_voltage(&u16BatteryVoltageMv);
+    memcpy(p, &u16BatteryVoltageMv, sizeof(u16BatteryVoltageMv));
+    p += sizeof(u16BatteryVoltageMv);
 
     *p++ = app_storage_get_reset_count();
 
@@ -1788,7 +1793,24 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
         break;
 
     case QUERY_POWER_INFO:
+    {
+        uint8_t u8VbusStatus;
+        sv_charge_get_vbus_status(&u8VbusStatus);
+        *p++ = (u8VbusStatus == CHG_VBUS_STAT_NO_INPUT) ? 0x00 : 0x01;
+
+        uint8_t u8ChargeStatus;
+        sv_charge_get_charging_status(&u8ChargeStatus);
+        *p++ = u8ChargeStatus;
+
+        uint16_t u16BatteryVoltageMv;
+        sv_charge_start_adc_conversion();
+        sys_delay_ms(50); // Delay for conversion
+        sv_charge_get_battery_voltage(&u16BatteryVoltageMv);
+        memcpy(p, &u16BatteryVoltageMv, sizeof(u16BatteryVoltageMv));
+        p += sizeof(u16BatteryVoltageMv);
+
         break;
+    }
 
     case QUERY_SIM_NETWORK_INFO:
     {
