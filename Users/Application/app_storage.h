@@ -6,6 +6,8 @@
 #include "sv_flash.h"
 #include "sv_time.h"
 
+#include "sv_charge.h"
+
 #include "sv_modbus_meter.h"
 #include "sv_pressure_sensor.h"
 #include "sv_pulse_meter.h"
@@ -130,6 +132,19 @@ typedef struct __attribute__((packed))
 #define LATCH_PERIOD 15
 #define PUSH_PERIOD 60
 #define TIMEZONE (+7)
+
+typedef struct __attribute__((packed))
+{
+    uint16_t u16IinLimMa;
+    uint16_t u16ChargeVoltageMv;
+    uint16_t u16ChargeCurrentMa;
+    uint8_t u8ChargeLedEnable;
+} Charge_Config_Parameter_t;
+
+#define CHARGE_IINLIM_MA 2500
+#define CHARGE_VOLTAGE_MV 4208
+#define CHARGE_CURRENT_MA 1024
+#define CHARGE_LED_ENABLE 0
 
 typedef struct __attribute__((packed))
 {
@@ -528,6 +543,26 @@ bool app_storage_set_module_config(const Module_Config_Parameter_t *pConfig);
  * @return true if the configuration is retrieved successfully, otherwise false.
  */
 bool app_storage_get_module_config(Module_Config_Parameter_t *pConfig);
+
+/**
+ * @brief Set charger configuration.
+ *
+ * Saves the charger configuration to EEPROM.
+ *
+ * @param[in] pConfig Charger configuration.
+ *
+ * @return true if the configuration is saved successfully, otherwise false.
+ */
+bool app_storage_set_charge_config(const Charge_Config_Parameter_t *pConfig);
+
+/**
+ * @brief Get charger configuration.
+ *
+ * @param[out] pConfig Charger configuration.
+ *
+ * @return true if the configuration is retrieved successfully, otherwise false.
+ */
+bool app_storage_get_charge_config(Charge_Config_Parameter_t *pConfig);
 
 /**
  * @brief Set pulse meter configuration.
