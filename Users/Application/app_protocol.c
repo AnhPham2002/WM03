@@ -219,11 +219,14 @@ bool app_protocol_pack_push_info(uint8_t *pFrame, uint16_t *u16FrameLen)
     *p++ = s8Rsrq;
     *p++ = s8Rssnr;
 
-    // bool bInputPowerStatus;
-    // float fBatteryVoltage;
-    // app_power_supply_get_info(&bInputPowerStatus, &fBatteryVoltage);
-    // *p++ = (bInputPowerStatus == true) ? 0x01 : 0x00;
-    // *p++ = (uint8_t)(fBatteryVoltage * 10.0f + 0.5f);
+    bool bVbusStatus;
+    uint8_t u8ChargingStatus;
+    uint16_t u16BatteryVoltageMv;
+    sv_charge_get_power_info(&bVbusStatus, &u8ChargingStatus, &u16BatteryVoltageMv);
+    *p++ = bVbusStatus ? 0x01 : 0x00;
+    *p++ = u8ChargingStatus;
+    memcpy(p, &u16BatteryVoltageMv, sizeof(u16BatteryVoltageMv));
+    p += sizeof(u16BatteryVoltageMv);
 
     *p++ = app_storage_get_reset_count();
 
@@ -1788,7 +1791,18 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
         break;
 
     case QUERY_POWER_INFO:
+    {
+        bool bVbusStatus;
+        uint8_t u8ChargingStatus;
+        uint16_t u16BatteryVoltageMv;
+        sv_charge_get_power_info(&bVbusStatus, &u8ChargingStatus, &u16BatteryVoltageMv);
+        *p++ = bVbusStatus ? 0x01 : 0x00;
+        *p++ = u8ChargingStatus;
+        memcpy(p, &u16BatteryVoltageMv, sizeof(u16BatteryVoltageMv));
+        p += sizeof(u16BatteryVoltageMv);
+
         break;
+    }
 
     case QUERY_SIM_NETWORK_INFO:
     {
