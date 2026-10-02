@@ -45,8 +45,9 @@ typedef enum
     X(CONFIG_MODBUS_METER, 0x07)             \
     X(CONFIG_PRESSURE_SENSOR, 0x08)          \
     X(CONFIG_REBOOT, 0x09)                   \
-    X(CONFIG_RESET_SETTING, 0x0A)            \
-    X(CONFIG_CHANGE_PASSWORD, 0x0B)          \
+    X(CONFIG_POWER_OFF, 0x0A)                \
+    X(CONFIG_RESET_SETTING, 0x0B)            \
+    X(CONFIG_CHANGE_PASSWORD, 0x0C)          \
     X(CONFIG_RESET_PASSWORD, 0x10)           \
     X(CONFIG_MCU_RESET_COUNT, 0x11)          \
     X(CONFIG_ERASE_MEASUREMENT_DATA, 0x12)   \

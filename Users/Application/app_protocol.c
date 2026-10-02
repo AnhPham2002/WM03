@@ -1648,6 +1648,10 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         sys_reset();
         break;
 
+    case CONFIG_POWER_OFF:
+        sv_charge_disconnect_battery();
+        break;
+
     case CONFIG_RESET_SETTING:
         app_storage_config_parameter_default();
         break;
