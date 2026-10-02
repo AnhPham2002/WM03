@@ -40,12 +40,13 @@ typedef enum
     X(CONFIG_TIME, 0x02)                     \
     X(CONFIG_IP_ENDPOINT, 0x03)              \
     X(CONFIG_MODULE, 0x04)                   \
-    X(CONFIG_PULSE_METER, 0x05)              \
-    X(CONFIG_MODBUS_METER, 0x06)             \
-    X(CONFIG_PRESSURE_SENSOR, 0x07)          \
-    X(CONFIG_REBOOT, 0x08)                   \
-    X(CONFIG_RESET_SETTING, 0x09)            \
-    X(CONFIG_CHANGE_PASSWORD, 0x0A)          \
+    X(CONFIG_CHARGE, 0x05)                   \
+    X(CONFIG_PULSE_METER, 0x06)              \
+    X(CONFIG_MODBUS_METER, 0x07)             \
+    X(CONFIG_PRESSURE_SENSOR, 0x08)          \
+    X(CONFIG_REBOOT, 0x09)                   \
+    X(CONFIG_RESET_SETTING, 0x0A)            \
+    X(CONFIG_CHANGE_PASSWORD, 0x0B)          \
     X(CONFIG_RESET_PASSWORD, 0x10)           \
     X(CONFIG_MCU_RESET_COUNT, 0x11)          \
     X(CONFIG_ERASE_MEASUREMENT_DATA, 0x12)   \
