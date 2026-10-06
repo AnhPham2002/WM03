@@ -11,6 +11,9 @@ static Eeprom_Sequence_t u64EepromRuntimeDataSequence;
 static Eeprom_Runtime_Data_t sEepromRuntimeData;
 static Eeprom_Runtime_Data_Area_t eNextEepromRuntimeDataLocation;
 
+static bool bPasswordChanged = false;
+static bool bConfigChanged = false;
+
 static Ip_Endpoint_t sIpEndpoint;
 static Module_Config_Parameter_t sModuleConfig;
 static Charge_Config_Parameter_t sChargeConfig;
@@ -181,6 +184,12 @@ bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword)
         return false;
     }
 
+    if (memcmp(sDevicePassword.au8Passwords[u8PasswordLevel - 1], pPassword, PASSWORD_LENGTH) == 0)
+    {
+        return false;
+    }
+
+    bPasswordChanged = true;
     memcpy(sDevicePassword.au8Passwords[u8PasswordLevel - 1], pPassword, PASSWORD_LENGTH);
     return sv_eeprom_write(EEPROM_DEVICE_PASSWORD_ADDRESS, (const uint8_t *)&sDevicePassword, sizeof(Device_Password_t));
 }
@@ -205,10 +214,31 @@ bool app_storage_restore_default_password(void)
     return sv_eeprom_write(EEPROM_DEVICE_PASSWORD_ADDRESS, (const uint8_t *)&sDevicePassword, sizeof(Device_Password_t));
 }
 
+bool app_storage_get_password_changed_flag(void)
+{
+    if (bPasswordChanged)
+    {
+        bPasswordChanged = false;
+        return true;
+    }
+    return false;
+}
+
+bool app_storage_get_config_changed_flag(void)
+{
+    if (bConfigChanged)
+    {
+        bConfigChanged = false;
+        return true;
+    }
+    return false;
+}
+
 bool app_storage_set_ip_endpoint(const Ip_Endpoint_t *pIpEndpoint)
 {
     memcpy(&sIpEndpoint, pIpEndpoint, sizeof(Ip_Endpoint_t));
 
+    bConfigChanged = true;
     return sv_eeprom_write(EEPROM_IP_ENDPOINT_ADDRESS, (const uint8_t *)&sIpEndpoint, sizeof(Ip_Endpoint_t));
 }
 
@@ -503,6 +533,8 @@ bool app_storage_set_pulse_meter_count(uint8_t u8MeterIndex, const Pulse_Meter_D
         return false;
     }
 
+    bConfigChanged = true;
+
     Pulse_Count_t sPulseCount;
     sPulseCount.u64ForwardPulseCount = (uint64_t)(pData->dTotalForward * sPulseMeterConfig[u8MeterIndex].sConfig.u16PulseFactor + 0.5);
     sPulseCount.u64ReversePulseCount = (uint64_t)(pData->dTotalReverse * sPulseMeterConfig[u8MeterIndex].sConfig.u16PulseFactor + 0.5);
@@ -522,6 +554,7 @@ bool app_storage_set_module_config(const Module_Config_Parameter_t *pConfig)
         return false;
     }
 
+    bConfigChanged = true;
     memcpy(&sModuleConfig, pConfig, sizeof(Module_Config_Parameter_t));
     return sv_eeprom_write(EEPROM_MODULE_CONFIG_ADDRESS, (const uint8_t *)&sModuleConfig, sizeof(sModuleConfig));
 }
@@ -544,6 +577,7 @@ bool app_storage_set_charge_config(const Charge_Config_Parameter_t *pConfig)
         return false;
     }
 
+    bConfigChanged = true;
     memcpy(&sChargeConfig, pConfig, sizeof(Charge_Config_Parameter_t));
     sv_charge_set_input_current_limit(sChargeConfig.u16IinLimMa);
     sv_charge_set_charge_voltage(sChargeConfig.u16ChargeVoltageMv);
@@ -577,6 +611,7 @@ bool app_storage_set_pulse_meter_config(uint8_t u8MeterIndex, const Pulse_Meter_
         return false;
     }
 
+    bConfigChanged = true;
     memcpy(&sPulseMeterConfig[u8MeterIndex], pConfig, sizeof(Pulse_Meter_Config_Parameter_t));
     sv_pulse_meter_set_config(u8MeterIndex, &pConfig->sConfig);
     return sv_eeprom_write(EEPROM_PULSE_METER_CONFIG_ADDRESS, (const uint8_t *)sPulseMeterConfig, sizeof(sPulseMeterConfig));
@@ -600,6 +635,7 @@ bool app_storage_set_modbus_meter_config(uint8_t u8MeterIndex, const Modbus_Mete
         return false;
     }
 
+    bConfigChanged = true;
     memcpy(&sModbusMeterConfig[u8MeterIndex], pConfig, sizeof(Modbus_Meter_Config_Parameter_t));
     return sv_eeprom_write(EEPROM_MODBUS_METER_CONFIG_ADDRESS, (const uint8_t *)sModbusMeterConfig, sizeof(sModbusMeterConfig));
 }
@@ -622,6 +658,7 @@ bool app_storage_set_pressure_sensor_config(uint8_t u8MeterIndex, const Pressure
         return false;
     }
 
+    bConfigChanged = true;
     memcpy(&sPressureSensorConfig[u8MeterIndex], pConfig, sizeof(Pressure_Sensor_Config_Parameter_t));
     return sv_eeprom_write(EEPROM_PRESSURE_SENSOR_CONFIG_ADDRESS, (const uint8_t *)sPressureSensorConfig, sizeof(sPressureSensorConfig));
 }

@@ -9,6 +9,8 @@
 #define BATTERY_LOW_THRESHOLD_MV 3200
 #define BATTERY_LOW_RECOVERY_MV 3400
 #define BATTERY_STATUS_CHECK_SECOND 30
+#define CONFIG_CHANGE_TIMEOUT_SECOND 600
+#define PASSWORD_CHANGE_TIMEOUT_SECOND 600
 
 /**
  * @brief Execute event monitoring and recording.

@@ -2,6 +2,8 @@
 
 #define RAM_NOINIT_MAGNETIC_MAGIC_NUMBER 0x11223344
 #define RAM_NOINIT_POWER_MAGIC_NUMBER 0x5A5AA5A5
+#define RAM_NOINIT_CONFIG_CHANGE_MAGIC_NUMBER 0xA5A55A5A
+#define RAM_NOINIT_PASSWORD_CHANGE_MAGIC_NUMBER 0xFEDCBA98
 
 typedef struct
 {
@@ -21,8 +23,24 @@ typedef struct
     bool bBatteryLow;
 } Power_Status_t;
 
+typedef struct
+{
+    uint32_t u32Magic;
+    bool bConfigChangeActive;
+    uint32_t u32ConfigChangeStartTimestamp;
+} Config_Change_Status_t;
+
+typedef struct
+{
+    uint32_t u32Magic;
+    bool bPasswordChangeActive;
+    uint32_t u32PasswordChangeStartTimestamp;
+} Password_Change_Status_t;
+
 static Magnetic_Status_t sMagneticStatus RAM_NOINIT;
 static Power_Status_t sPowerStatus RAM_NOINIT;
+static Config_Change_Status_t sConfigChangeStatus RAM_NOINIT;
+static Password_Change_Status_t sPasswordChangeStatus RAM_NOINIT;
 
 static Event_Data_t sEventData;
 
@@ -229,30 +247,72 @@ static void app_event_power(void)
 
 static void app_event_config_changed(void)
 {
-    // static bool bConfigChanged = false;
-    // static uint32_t u32ConfigChangeTime = 0;
+    uint32_t u32TimestampNow = sv_time_get_unix_timestamp();
 
-    // if (!bConfigChanged)
-    // {
-    //     bConfigChanged = true;
+    if (sConfigChangeStatus.u32Magic != RAM_NOINIT_CONFIG_CHANGE_MAGIC_NUMBER)
+    {
+        sConfigChangeStatus.bConfigChangeActive = false;
+        sConfigChangeStatus.u32ConfigChangeStartTimestamp = 0;
+        sConfigChangeStatus.u32Magic = RAM_NOINIT_CONFIG_CHANGE_MAGIC_NUMBER;
+    }
 
-    //     sv_time_get_date_time(&sEventData.sDateTime);
-    //     sEventData.u8MeterType = MODULE_TYPE;
-    //     sEventData.u8MeterIndex = 0;
-    //     sEventData.u8EventCode = EVENT_CONFIG_CHANGED;
-    //     app_storage_event_save(&sEventData);
-    // }
+    if (app_storage_get_config_changed_flag())
+    {
+        if (!sConfigChangeStatus.bConfigChangeActive)
+        {
+            sv_time_get_date_time(&sEventData.sDateTime);
+            sEventData.u8MeterType = MODULE_TYPE;
+            sEventData.u8MeterIndex = 0;
+            sEventData.u8EventCode = EVENT_CONFIG_CHANGED;
+            app_storage_event_save(&sEventData);
 
-    // u32ConfigChangeTime = sys_time_ms();
+            sConfigChangeStatus.bConfigChangeActive = true;
+        }
+
+        sConfigChangeStatus.u32ConfigChangeStartTimestamp = u32TimestampNow;
+    }
+    else if (sConfigChangeStatus.bConfigChangeActive)
+    {
+        if (u32TimestampNow - sConfigChangeStatus.u32ConfigChangeStartTimestamp >= CONFIG_CHANGE_TIMEOUT_SECOND)
+        {
+            sConfigChangeStatus.bConfigChangeActive = false;
+        }
+    }
 }
 
 static void app_event_password_changed(void)
 {
-    // sv_time_get_date_time(&sEventData.sDateTime);
-    // sEventData.u8MeterType = MODULE_TYPE;
-    // sEventData.u8MeterIndex = 0;
-    // sEventData.u8EventCode = EVENT_PASSWORD_CHANGED;
-    // app_storage_event_save(&sEventData);
+    uint32_t u32TimestampNow = sv_time_get_unix_timestamp();
+
+    if (sPasswordChangeStatus.u32Magic != RAM_NOINIT_PASSWORD_CHANGE_MAGIC_NUMBER)
+    {
+        sPasswordChangeStatus.bPasswordChangeActive = false;
+        sPasswordChangeStatus.u32PasswordChangeStartTimestamp = 0;
+        sPasswordChangeStatus.u32Magic = RAM_NOINIT_PASSWORD_CHANGE_MAGIC_NUMBER;
+    }
+
+    if (app_storage_get_password_changed_flag())
+    {
+        if (!sPasswordChangeStatus.bPasswordChangeActive)
+        {
+            sv_time_get_date_time(&sEventData.sDateTime);
+            sEventData.u8MeterType = MODULE_TYPE;
+            sEventData.u8MeterIndex = 0;
+            sEventData.u8EventCode = EVENT_PASSWORD_CHANGED;
+            app_storage_event_save(&sEventData);
+
+            sPasswordChangeStatus.bPasswordChangeActive = true;
+        }
+
+        sPasswordChangeStatus.u32PasswordChangeStartTimestamp = u32TimestampNow;
+    }
+    else if (sPasswordChangeStatus.bPasswordChangeActive)
+    {
+        if (u32TimestampNow - sPasswordChangeStatus.u32PasswordChangeStartTimestamp >= PASSWORD_CHANGE_TIMEOUT_SECOND)
+        {
+            sPasswordChangeStatus.bPasswordChangeActive = false;
+        }
+    }
 }
 
 static void app_event_firmware_update(void) {}

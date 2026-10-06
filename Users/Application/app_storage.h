@@ -337,6 +337,24 @@ bool app_storage_get_password(uint8_t u8PasswordLevel, uint8_t *pPassword);
 bool app_storage_restore_default_password(void);
 
 /**
+ * @brief Check whether the password has been changed.
+ *
+ * Clears the password change flag after detecting it.
+ *
+ * @return true if the password has been changed, otherwise false.
+ */
+bool app_storage_get_password_changed_flag(void);
+
+/**
+ * @brief Check whether the configuration has been changed.
+ *
+ * Clears the configuration change flag after detecting it.
+ *
+ * @return true if the configuration has been changed, otherwise false.
+ */
+bool app_storage_get_config_changed_flag(void);
+
+/**
  * @brief Set IP endpoint configuration.
  *
  * Saves the IP endpoint configuration to EEPROM.
