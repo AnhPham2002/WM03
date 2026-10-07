@@ -14,8 +14,6 @@
 
 #define FIRMWARE_VERSION "V1.0.1"
 
-#define STORAGE_BUFFER_SIZE 1024
-
 #define VERSION_SIZE 10 // "Vxx.xx.xxx"
 
 #define MODULE_SERIAL_SIZE 12
@@ -58,12 +56,6 @@ typedef struct __attribute__((packed))
 } Device_Password_t;
 
 /*==================================================================================================
-*                             SEQUENCE SIZE FOR METADATA AND RUNTIME DATA
-==================================================================================================*/
-
-typedef uint64_t Eeprom_Sequence_t;
-
-/*==================================================================================================
 *                                      EEPROM METADATA
 ==================================================================================================*/
 
@@ -71,6 +63,7 @@ typedef uint64_t Eeprom_Sequence_t;
 
 typedef struct __attribute__((packed))
 {
+    uint32_t u32Sequence;
     uint16_t u16NextLatchSaveIndex;
     uint16_t u16NextLatchLoadIndex;
     uint16_t u16LatchCount;
@@ -97,6 +90,7 @@ typedef enum
 
 typedef struct __attribute__((packed))
 {
+    uint32_t u32Sequence;
     uint8_t u8ResetCount;
     Pulse_Count_t sPulseCount[MAX_PULSE_GATE_COUNT];
 } Eeprom_Runtime_Data_t;
@@ -526,14 +520,12 @@ void app_storage_set_reset_count(uint8_t u8Count);
 uint8_t app_storage_get_reset_count(void);
 
 /**
- * @brief Get EEPROM metadata and runtime data with sequence numbers.
+ * @brief Get EEPROM metadata and runtime data.
  *
- * @param[out] SeqMeta    Metadata sequence number.
  * @param[out] pMeta      EEPROM metadata.
- * @param[out] SeqRuntime Runtime data sequence number.
  * @param[out] pRuntime   EEPROM runtime data.
  */
-void app_storage_get_metadata_runtime(uint64_t *SeqMeta, Eeprom_Metadata_t *pMeta, uint64_t *SeqRuntime, Eeprom_Runtime_Data_t *pRuntime);
+void app_storage_get_metadata_runtime(Eeprom_Metadata_t *pMeta, Eeprom_Runtime_Data_t *pRuntime);
 
 /**
  * @brief Set pulse meter count.

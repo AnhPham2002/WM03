@@ -1996,21 +1996,13 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
 
     case QUERY_METADATA:
     {
-        uint64_t u64SeqMeta;
-        uint64_t u64SeqRuntime;
         Eeprom_Metadata_t sMeta;
         Eeprom_Runtime_Data_t sRuntime;
 
-        app_storage_get_metadata_runtime(&u64SeqMeta, &sMeta, &u64SeqRuntime, &sRuntime);
-
-        memcpy(p, &u64SeqMeta, sizeof(u64SeqMeta));
-        p += sizeof(u64SeqMeta);
+        app_storage_get_metadata_runtime(&sMeta, &sRuntime);
 
         memcpy(p, &sMeta, sizeof(sMeta));
         p += sizeof(sMeta);
-
-        memcpy(p, &u64SeqRuntime, sizeof(u64SeqRuntime));
-        p += sizeof(u64SeqRuntime);
 
         memcpy(p, &sRuntime, sizeof(sRuntime));
         p += sizeof(sRuntime);
