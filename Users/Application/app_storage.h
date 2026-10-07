@@ -214,7 +214,8 @@ typedef struct __attribute__((packed))
 } Event_Data_t;
 
 #define EVENT_PACKET_SIZE (ALIGN4(sizeof(Event_Data_t) + 2)) // +2 bytes CRC
-#define MAX_EVENT_COUNT ((int)(EEPROM_EVENT_SIZE / EVENT_PACKET_SIZE))
+#define MAX_EVENT_COUNT 1000
+_Static_assert(MAX_EVENT_COUNT <= (EEPROM_EVENT_SIZE / EVENT_PACKET_SIZE), "MAX_EVENT_COUNT exceeds EEPROM capacity");
 
 typedef enum
 {
@@ -243,7 +244,8 @@ typedef struct __attribute__((packed))
 } Log_Data_t;
 
 #define LOG_PACKET_SIZE (ALIGN4(sizeof(Log_Data_t) + 2)) // +2 bytes CRC
-#define MAX_LOG_COUNT ((int)(EEPROM_LOG_SIZE / LOG_PACKET_SIZE))
+#define MAX_LOG_COUNT 83
+_Static_assert(MAX_LOG_COUNT <= (EEPROM_LOG_SIZE / LOG_PACKET_SIZE), "MAX_LOG_COUNT exceeds EEPROM capacity");
 
 /*==================================================================================================
 *                                           LATCH RECORD
@@ -258,7 +260,8 @@ typedef struct __attribute__((packed))
 } Latch_Data_t;
 
 #define LATCH_PACKET_SIZE (ALIGN4(sizeof(Latch_Data_t) + 2)) // +2 bytes CRC
-#define MAX_LATCH_COUNT ((int)(EEPROM_LATCH_SIZE / LATCH_PACKET_SIZE))
+#define MAX_LATCH_COUNT 720
+_Static_assert(MAX_LATCH_COUNT <= (EEPROM_LATCH_SIZE / LATCH_PACKET_SIZE), "MAX_LATCH_COUNT exceeds EEPROM capacity");
 
 /*==================================================================================================
 *                                PUBLIC FUNCTIONS DECLARATIONS
