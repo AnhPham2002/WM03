@@ -1,9 +1,13 @@
 #include "app_protocol.h"
 
+static Ota_Metadata_t *const pOtaMetadata = (Ota_Metadata_t *)RAM_NOINIT_OTA_METADATA_ADDRESS;
+
 static uint32_t u32LastTimeAccess;
 static Protocol_Access_Level_t eProtocolCurrentLevel = ACCESS_LEVEL_0;
 
 static bool bOtaFinishUpdateFlag = false;
+static bool bOtaUpdatingFlag = false;
+static uint32_t u32OtaLastTime;
 
 static uint8_t au8ProtocolBuf[PROTOCOL_BUFFER_SIZE];
 static uint16_t u16ProtocolBufLen;
@@ -171,6 +175,49 @@ static Protocol_Err_Code_t app_protocol_ota_handler(uint8_t u8Id, uint8_t *pRxPa
 
 void app_protocol_update(void)
 {
+    if (bOtaUpdatingFlag)
+    {
+        if (sys_time_ms() - u32OtaLastTime > PROTOCOL_OTA_TIMEOUT_MS)
+        {
+            Firmware_Metadata_t sOtaFirmwareMetadata;
+            uint32_t u32OtaMetadataAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_METADATA_ADDR : SLOT_A_METADATA_ADDR;
+            sv_flash_read(u32OtaMetadataAddress, (uint8_t *)&sOtaFirmwareMetadata, sizeof(sOtaFirmwareMetadata));
+
+            sv_flash_erase(u32OtaMetadataAddress, METADATA_MAX_SIZE);
+            sOtaFirmwareMetadata.eStatus = FIRMWARE_UPDATING;
+            sOtaFirmwareMetadata.u16PacketDownloadedCount = pOtaMetadata->u16PacketIndex;
+            sv_flash_write(u32OtaMetadataAddress, (const uint8_t *)&sOtaFirmwareMetadata, sizeof(sOtaFirmwareMetadata));
+
+            bOtaUpdatingFlag = false;
+        }
+    }
+
+    if (pOtaMetadata->u32Magic != RAM_NOINIT_OTA_METADATA_MAGIC_NUMBER)
+    {
+        Firmware_Metadata_t sAnotherSlotMetadata;
+        uint32_t u32AnotherFirmwareMetadataAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_METADATA_ADDR : SLOT_A_METADATA_ADDR;
+
+        sv_flash_read(u32AnotherFirmwareMetadataAddress, (uint8_t *)&sAnotherSlotMetadata, sizeof(sAnotherSlotMetadata));
+        if (sAnotherSlotMetadata.eStatus == FIRMWARE_UPDATING)
+        {
+            memcpy(pOtaMetadata->au8Version, sAnotherSlotMetadata.au8Version, VERSION_SIZE);
+            pOtaMetadata->u16PacketIndex = sAnotherSlotMetadata.u16PacketDownloadedCount;
+            pOtaMetadata->bFirmwareUpdated = false;
+            pOtaMetadata->u32Size = sAnotherSlotMetadata.u32Size;
+            pOtaMetadata->u32Crc = sAnotherSlotMetadata.u32Crc;
+        }
+        else
+        {
+            memset(pOtaMetadata->au8Version, 0, VERSION_SIZE);
+            pOtaMetadata->u16PacketIndex = 0;
+            pOtaMetadata->bFirmwareUpdated = false;
+            pOtaMetadata->u32Size = 0;
+            pOtaMetadata->u32Crc = 0;
+        }
+
+        pOtaMetadata->u32Magic = RAM_NOINIT_OTA_METADATA_MAGIC_NUMBER;
+    }
+
     if (sys_time_ms() - u32LastTimeAccess >= PROTOCOL_ACCESS_TIMEOUT)
     {
         eProtocolCurrentLevel = ACCESS_LEVEL_0;
@@ -2100,13 +2147,14 @@ static Protocol_Err_Code_t app_protocol_ota_handler(uint8_t u8Id, uint8_t *pRxPa
     {
     case OTA_UPDATE_REQUEST:
     {
-        Firmware_Metadata_t sCurrentFirmwareMetadata;
+        Firmware_Metadata_t sCurrentMetadata;
         Firmware_Metadata_t sNextFirmwareMetadata = {0};
-        uint16_t u16PacketIndexRequest = 0;
         uint32_t u32SizeSlotA;
         uint32_t u32CrcSlotA;
         uint32_t u32SizeSlotB;
         uint32_t u32CrcSlotB;
+        uint32_t u32FirmwareMetadataDownloadAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_METADATA_ADDR : SLOT_A_METADATA_ADDR;
+        uint32_t u32FirmwareDownloadAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_START_ADDR : SLOT_A_START_ADDR;
 
         memcpy(sNextFirmwareMetadata.au8Version, pRx, VERSION_SIZE);
         pRx += VERSION_SIZE;
@@ -2123,51 +2171,74 @@ static Protocol_Err_Code_t app_protocol_ota_handler(uint8_t u8Id, uint8_t *pRxPa
 
         sNextFirmwareMetadata.eStatus = FIRMWARE_UPDATING;
 
-        uint32_t u32NextFirmwareMetadataAddress;
-        uint32_t u32NextFirmwareAddress;
-
         if (sys_get_vector_table_address() == SLOT_A_START_ADDR)
         {
-            sv_flash_read(SLOT_A_METADATA_ADDR, (uint8_t *)&sCurrentFirmwareMetadata, sizeof(sCurrentFirmwareMetadata));
-            u32NextFirmwareMetadataAddress = SLOT_B_METADATA_ADDR;
-            u32NextFirmwareAddress = SLOT_B_START_ADDR;
+            sv_flash_read(SLOT_A_METADATA_ADDR, (uint8_t *)&sCurrentMetadata, sizeof(sCurrentMetadata));
             sNextFirmwareMetadata.u32Size = u32SizeSlotB;
             sNextFirmwareMetadata.u32Crc = u32CrcSlotB;
         }
         else
         {
-            sv_flash_read(SLOT_B_METADATA_ADDR, (uint8_t *)&sCurrentFirmwareMetadata, sizeof(sCurrentFirmwareMetadata));
-            u32NextFirmwareMetadataAddress = SLOT_A_METADATA_ADDR;
-            u32NextFirmwareAddress = SLOT_A_START_ADDR;
+            sv_flash_read(SLOT_B_METADATA_ADDR, (uint8_t *)&sCurrentMetadata, sizeof(sCurrentMetadata));
             sNextFirmwareMetadata.u32Size = u32SizeSlotA;
             sNextFirmwareMetadata.u32Crc = u32CrcSlotA;
         }
+        sNextFirmwareMetadata.u32Sequence = sCurrentMetadata.u32Sequence + 1;
 
-        if (sNextFirmwareMetadata.u32Size > FIRMWARE_MAX_SIZE)
+        if ((memcmp(pOtaMetadata->au8Version, sNextFirmwareMetadata.au8Version, VERSION_SIZE) != 0) || (pOtaMetadata->u32Size != sNextFirmwareMetadata.u32Size) ||
+            (pOtaMetadata->u32Crc != sNextFirmwareMetadata.u32Crc))
         {
-            *pTx++ = OTA_REQUEST_SLOT_NONE; // No update
-            memcpy(pTx, &u16PacketIndexRequest, sizeof(u16PacketIndexRequest));
-            pTx += sizeof(u16PacketIndexRequest);
+            memcpy(pOtaMetadata->au8Version, sNextFirmwareMetadata.au8Version, VERSION_SIZE);
+            pOtaMetadata->u16PacketIndex = sNextFirmwareMetadata.u16PacketDownloadedCount; // Index = 0;
+            pOtaMetadata->bFirmwareUpdated = false;
+            pOtaMetadata->u32Size = sNextFirmwareMetadata.u32Size;
+            pOtaMetadata->u32Crc = sNextFirmwareMetadata.u32Crc;
+
+            if (pOtaMetadata->u32Size > FIRMWARE_MAX_SIZE)
+            {
+                *pTx++ = OTA_REQUEST_SLOT_NONE; // No update
+                memcpy(pTx, &pOtaMetadata->u16PacketIndex, sizeof(pOtaMetadata->u16PacketIndex));
+                pTx += sizeof(pOtaMetadata->u16PacketIndex);
+            }
+            else
+            {
+                if (sys_get_vector_table_address() == SLOT_A_START_ADDR)
+                {
+                    *pTx++ = OTA_REQUEST_SLOT_B; // Slot B request
+                    memcpy(pTx, &pOtaMetadata->u16PacketIndex, sizeof(pOtaMetadata->u16PacketIndex));
+                    pTx += sizeof(pOtaMetadata->u16PacketIndex);
+                }
+                else
+                {
+                    *pTx++ = OTA_REQUEST_SLOT_A; // Slot A request
+                    memcpy(pTx, &pOtaMetadata->u16PacketIndex, sizeof(pOtaMetadata->u16PacketIndex));
+                    pTx += sizeof(pOtaMetadata->u16PacketIndex);
+                }
+
+                sv_flash_erase(u32FirmwareMetadataDownloadAddress, METADATA_MAX_SIZE);
+                sv_flash_write(u32FirmwareMetadataDownloadAddress, (const uint8_t *)&sNextFirmwareMetadata, sizeof(sNextFirmwareMetadata));
+                sv_flash_erase(u32FirmwareDownloadAddress, FIRMWARE_MAX_SIZE);
+            }
         }
         else
         {
+            pOtaMetadata->u16PacketIndex -= pOtaMetadata->u16PacketIndex % PACKET_COUNT_PER_PAGE;
+
             if (sys_get_vector_table_address() == SLOT_A_START_ADDR)
             {
                 *pTx++ = OTA_REQUEST_SLOT_B; // Slot B request
-                memcpy(pTx, &u16PacketIndexRequest, sizeof(u16PacketIndexRequest));
-                pTx += sizeof(u16PacketIndexRequest);
+                memcpy(pTx, &pOtaMetadata->u16PacketIndex, sizeof(pOtaMetadata->u16PacketIndex));
+                pTx += sizeof(pOtaMetadata->u16PacketIndex);
             }
             else
             {
                 *pTx++ = OTA_REQUEST_SLOT_A; // Slot A request
-                memcpy(pTx, &u16PacketIndexRequest, sizeof(u16PacketIndexRequest));
-                pTx += sizeof(u16PacketIndexRequest);
+                memcpy(pTx, &pOtaMetadata->u16PacketIndex, sizeof(pOtaMetadata->u16PacketIndex));
+                pTx += sizeof(pOtaMetadata->u16PacketIndex);
             }
 
-            sNextFirmwareMetadata.u32Sequence = sCurrentFirmwareMetadata.u32Sequence + 1;
-            sv_flash_erase(u32NextFirmwareMetadataAddress, METADATA_MAX_SIZE);
-            sv_flash_write(u32NextFirmwareMetadataAddress, (const uint8_t *)&sNextFirmwareMetadata, sizeof(sNextFirmwareMetadata));
-            sv_flash_erase(u32NextFirmwareAddress, FIRMWARE_MAX_SIZE);
+            uint32_t u32EraseAddress = u32FirmwareDownloadAddress + (pOtaMetadata->u16PacketIndex / PACKET_COUNT_PER_PAGE) * FLASH_PAGE_SIZE;
+            sv_flash_erase(u32EraseAddress, FLASH_PAGE_SIZE);
         }
 
         break;
@@ -2175,41 +2246,45 @@ static Protocol_Err_Code_t app_protocol_ota_handler(uint8_t u8Id, uint8_t *pRxPa
 
     case OTA_SEND_PACKET:
     {
-        uint16_t u16PacketIndex;
         uint16_t u16PacketSize;
-        Firmware_Metadata_t sFirmwareMetadata;
 
-        memcpy(&u16PacketIndex, pRx, sizeof(u16PacketIndex));
-        pRx += sizeof(u16PacketIndex);
+        bOtaUpdatingFlag = true;
+        u32OtaLastTime = sys_time_ms();
+
+        memcpy(&pOtaMetadata->u16PacketIndex, pRx, sizeof(pOtaMetadata->u16PacketIndex));
+        pRx += sizeof(pOtaMetadata->u16PacketIndex);
         memcpy(&u16PacketSize, pRx, sizeof(u16PacketSize));
         pRx += sizeof(u16PacketSize);
 
         uint32_t u32OtaStartAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_START_ADDR : SLOT_A_START_ADDR;
 
-        sv_flash_write(u32OtaStartAddress + (u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE), pRx, u16PacketSize);
+        sv_flash_write(u32OtaStartAddress + (pOtaMetadata->u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE), pRx, u16PacketSize);
 
-        memcpy(pTx, &u16PacketIndex, sizeof(u16PacketIndex));
-        pTx += sizeof(u16PacketIndex);
+        memcpy(pTx, &pOtaMetadata->u16PacketIndex, sizeof(pOtaMetadata->u16PacketIndex));
+        pTx += sizeof(pOtaMetadata->u16PacketIndex);
 
-        uint32_t u32OtaMetadataAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_METADATA_ADDR : SLOT_A_METADATA_ADDR;
-        sv_flash_read(u32OtaMetadataAddress, (uint8_t *)&sFirmwareMetadata, sizeof(sFirmwareMetadata));
-
-        if ((u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE) + u16PacketSize == sFirmwareMetadata.u32Size)
+        if ((pOtaMetadata->u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE) + u16PacketSize == pOtaMetadata->u32Size)
         {
-            if (sv_flash_crc32(u32OtaStartAddress, sFirmwareMetadata.u32Size) != sFirmwareMetadata.u32Crc)
+            if (sv_flash_crc32(u32OtaStartAddress, pOtaMetadata->u32Size) != pOtaMetadata->u32Crc)
             {
                 *pTx++ = PROTOCOL_ERR_FW_CRC32_FAILED;
             }
             else
             {
+                Firmware_Metadata_t sOtaFirmwareMetadata;
+                uint32_t u32OtaMetadataAddress = (sys_get_vector_table_address() == SLOT_A_START_ADDR) ? SLOT_B_METADATA_ADDR : SLOT_A_METADATA_ADDR;
+                sv_flash_read(u32OtaMetadataAddress, (uint8_t *)&sOtaFirmwareMetadata, sizeof(sOtaFirmwareMetadata));
+
                 sv_flash_erase(u32OtaMetadataAddress, METADATA_MAX_SIZE);
-                sFirmwareMetadata.eStatus = FIRMWARE_PENDING;
-                sv_flash_write(u32OtaMetadataAddress, (const uint8_t *)&sFirmwareMetadata, sizeof(sFirmwareMetadata));
+                sOtaFirmwareMetadata.eStatus = FIRMWARE_PENDING;
+                sv_flash_write(u32OtaMetadataAddress, (const uint8_t *)&sOtaFirmwareMetadata, sizeof(sOtaFirmwareMetadata));
                 bOtaFinishUpdateFlag = true;
+                pOtaMetadata->bFirmwareUpdated = true;
+                bOtaUpdatingFlag = false;
                 *pTx++ = PROTOCOL_ERR_SUCCESS;
             }
         }
-        else if ((u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE) + u16PacketSize > sFirmwareMetadata.u32Size)
+        else if ((pOtaMetadata->u16PacketIndex * PROTOCOL_MAX_OTA_PACKET_SIZE) + u16PacketSize > pOtaMetadata->u32Size)
         {
             *pTx++ = PROTOCOL_ERR_UNKNOW;
         }
