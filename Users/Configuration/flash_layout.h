@@ -30,4 +30,5 @@ typedef struct
     Firmware_Status_t eStatus;
     uint32_t u32Size;
     uint32_t u32Crc;
+    uint16_t u16PacketDownloadedCount;
 } Firmware_Metadata_t;
