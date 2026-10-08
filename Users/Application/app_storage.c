@@ -4,10 +4,10 @@ static uint64_t u64ModuleSerial;
 static Device_Password_t sDevicePassword;
 
 static Eeprom_Metadata_t sEepromMetadata;
-static Eeprom_Metadata_Area_t eNextEepromMetadataLocation;
+static Eeprom_Metadata_Area_t eNextEepromMetadataLocation = EEPROM_METADATA_AREA_1;
 
 static Eeprom_Runtime_Data_t sEepromRuntimeData;
-static Eeprom_Runtime_Data_Area_t eNextEepromRuntimeDataLocation;
+static Eeprom_Runtime_Data_Area_t eNextEepromRuntimeDataLocation = EEPROM_RUNTIME_DATA_AREA_1;
 
 static bool bPasswordChanged = false;
 static bool bConfigChanged = false;
@@ -901,16 +901,19 @@ static void app_storage_eeprom_metadata_load(void)
     uint32_t u32LastSequence = 0;
     if (sMeta1.u32Sequence >= u32LastSequence)
     {
+        u32LastSequence = sMeta1.u32Sequence;
         memcpy(&sEepromMetadata, &sMeta1, sizeof(Eeprom_Metadata_t));
         eNextEepromMetadataLocation = EEPROM_METADATA_AREA_2; // Latest record meta data at location 1, next record meta data at location 2
     }
     if (sMeta2.u32Sequence > u32LastSequence)
     {
+        u32LastSequence = sMeta2.u32Sequence;
         memcpy(&sEepromMetadata, &sMeta2, sizeof(Eeprom_Metadata_t));
         eNextEepromMetadataLocation = EEPROM_METADATA_AREA_3;
     }
     if (sMeta3.u32Sequence > u32LastSequence)
     {
+        u32LastSequence = sMeta3.u32Sequence;
         memcpy(&sEepromMetadata, &sMeta3, sizeof(Eeprom_Metadata_t));
         eNextEepromMetadataLocation = EEPROM_METADATA_AREA_4;
     }
@@ -986,22 +989,25 @@ static void app_storage_eeprom_runtime_data_load(void)
     uint32_t u32LastSequence = 0;
     if (sRuntime1.u32Sequence >= u32LastSequence)
     {
-        memcpy(&sEepromRuntimeData, &sRuntime1, sizeof(Eeprom_Metadata_t));
+        u32LastSequence = sRuntime1.u32Sequence;
+        memcpy(&sEepromRuntimeData, &sRuntime1, sizeof(sRuntime1));
         eNextEepromRuntimeDataLocation = EEPROM_RUNTIME_DATA_AREA_2; // Latest runtime data at location 1, next runtime data at location 2
     }
     if (sRuntime2.u32Sequence >= u32LastSequence)
     {
-        memcpy(&sEepromRuntimeData, &sRuntime2, sizeof(Eeprom_Metadata_t));
+        u32LastSequence = sRuntime2.u32Sequence;
+        memcpy(&sEepromRuntimeData, &sRuntime2, sizeof(sRuntime2));
         eNextEepromRuntimeDataLocation = EEPROM_RUNTIME_DATA_AREA_3;
     }
     if (sRuntime3.u32Sequence >= u32LastSequence)
     {
-        memcpy(&sEepromRuntimeData, &sRuntime3, sizeof(Eeprom_Metadata_t));
+        u32LastSequence = sRuntime3.u32Sequence;
+        memcpy(&sEepromRuntimeData, &sRuntime3, sizeof(sRuntime3));
         eNextEepromRuntimeDataLocation = EEPROM_RUNTIME_DATA_AREA_4;
     }
     if (sRuntime4.u32Sequence >= u32LastSequence)
     {
-        memcpy(&sEepromRuntimeData, &sRuntime4, sizeof(Eeprom_Metadata_t));
+        memcpy(&sEepromRuntimeData, &sRuntime4, sizeof(sRuntime4));
         eNextEepromRuntimeDataLocation = EEPROM_RUNTIME_DATA_AREA_1;
     }
 }
