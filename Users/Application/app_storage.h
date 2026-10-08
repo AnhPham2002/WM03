@@ -221,8 +221,7 @@ typedef enum
     EVENT_LOW_BATTERY_ENDED,
     EVENT_CONFIG_CHANGED,
     EVENT_PASSWORD_CHANGED,
-    EVENT_FIRMWARE_UPDATE_SUCCESS,
-    EVENT_FIRMWARE_UPDATE_FAILED
+    EVENT_FIRMWARE_UPDATED
 } Event_Code_t;
 
 /*==================================================================================================
