@@ -42,6 +42,8 @@ static Power_Status_t sPowerStatus RAM_NOINIT;
 static Config_Change_Status_t sConfigChangeStatus RAM_NOINIT;
 static Password_Change_Status_t sPasswordChangeStatus RAM_NOINIT;
 
+static Ota_Metadata_t *const pOtaMetadata = (Ota_Metadata_t *)RAM_NOINIT_OTA_METADATA_ADDRESS;
+
 static Event_Data_t sEventData;
 
 /*==================================================================================================
@@ -315,4 +317,20 @@ static void app_event_password_changed(void)
     }
 }
 
-static void app_event_firmware_update(void) {}
+static void app_event_firmware_update(void)
+{
+    if (pOtaMetadata->u32Magic == RAM_NOINIT_OTA_METADATA_MAGIC_NUMBER)
+    {
+        if (pOtaMetadata->bFirmwareUpdated)
+        {
+            sv_time_get_date_time(&sEventData.sDateTime);
+            sEventData.u8MeterType = MODULE_TYPE;
+            sEventData.u8MeterIndex = 0;
+            sEventData.u8EventCode = EVENT_FIRMWARE_UPDATED;
+            app_storage_event_save(&sEventData);
+
+            pOtaMetadata->u16PacketIndex = 0;
+            pOtaMetadata->bFirmwareUpdated = false;
+        }
+    }
+}
