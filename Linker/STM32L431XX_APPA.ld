@@ -55,10 +55,11 @@ ENTRY(Reset_Handler)
 /* Specify the memory areas */
 MEMORY
 {
-RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 48K
-RAM2 (xrw)      : ORIGIN = 0x10000000, LENGTH = 16K
-METADATA (rx)    : ORIGIN = 0x08008000,   LENGTH = 2K
-FLASH    (rx)    : ORIGIN = 0x08008800,   LENGTH = 110K
+RAM (xrw)        : ORIGIN = 0x20000000, LENGTH = 48K
+RAM_MANUAL (xrw) : ORIGIN = 0x10000000, LENGTH = 1K
+RAM_NOINIT (xrw) : ORIGIN = 0x10000400, LENGTH = 15K
+METADATA (rx)    : ORIGIN = 0x08008000, LENGTH = 2K
+FLASH    (rx)    : ORIGIN = 0x08008800, LENGTH = 110K
 }
 
 /* Highest address of the user mode stack */
@@ -240,7 +241,7 @@ SECTIONS
   } >RAM
 
 
-  /* Persistent / no-init variables in RAM2 (kept across reset, lost on power-off) */
+  /* Persistent / no-init variables in RAM_NOINIT (kept across reset, lost on power-off) */
   .ram_noinit (NOLOAD) :
   {
     . = ALIGN(4);
@@ -249,7 +250,7 @@ SECTIONS
     *(.ram_noinit*)
     . = ALIGN(4);
     __ram_noinit_end__ = .;
-  } >RAM2
+  } >RAM_NOINIT
 
 
   /* Remove information from the standard libraries */
