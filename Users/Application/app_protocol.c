@@ -1,4 +1,6 @@
 #include "app_protocol.h"
+#include "app_cellular.h"
+#include "sv_cellular.h"
 
 static Ota_Metadata_t *const pOtaMetadata = (Ota_Metadata_t *)RAM_NOINIT_OTA_METADATA_ADDRESS;
 
@@ -253,30 +255,27 @@ bool app_protocol_pack_push_info(uint8_t *pFrame, uint16_t *u16FrameLen)
     app_storage_get_firmware_version(p);
     p += VERSION_SIZE;
 
-    Task_Status_t eCcidStatus;
-    uint8_t au8Ccid[SIM_CCID_SIZE] = {0};
-    uint8_t u8CcidLen;
-    eCcidStatus = app_cellular_get_ccid(au8Ccid, &u8CcidLen);
-    if (eCcidStatus != TASK_STATUS_SUCCESS)
+    Ccid_Info_t sCcidInfo;
+    if (app_cellular_get_ccid(&sCcidInfo))
     {
-        memset(au8Ccid, '0', SIM_CCID_SIZE);
+        memcpy(p, sCcidInfo.au8Ccid, MAX_SIM_CCID_SIZE);
     }
-    memcpy(p, au8Ccid, SIM_CCID_SIZE);
-    p += SIM_CCID_SIZE;
+    else
+    {
+        memset(p, 0, MAX_SIM_CCID_SIZE);
+    }
+    p += MAX_SIM_CCID_SIZE;
 
-    int8_t s8Rssi;
-    int8_t s8Rsrp;
-    int8_t s8Rsrq;
-    int8_t s8Rssnr;
-    if (app_cellular_get_signal_quality(&s8Rssi, &s8Rsrp, &s8Rsrq, &s8Rssnr) != TASK_STATUS_SUCCESS)
+    Signal_Info_t sSignalInfo;
+    if (app_cellular_get_signal_quality(&sSignalInfo))
+    {
+        memcpy(p, &sSignalInfo, sizeof(Signal_Info_t));
+    }
+    else
     {
         memset(p, 0, 4);
-        p += 4;
     }
-    *p++ = s8Rssi;
-    *p++ = s8Rsrp;
-    *p++ = s8Rsrq;
-    *p++ = s8Rssnr;
+    p += sizeof(Signal_Info_t);
 
     bool bVbusStatus;
     uint8_t u8ChargingStatus;
@@ -1885,12 +1884,8 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
 
     case QUERY_SIM_NETWORK_INFO:
     {
-        uint8_t au8Ccid[SIM_CCID_SIZE] = {0};
-        uint8_t u8CcidLen;
-        int8_t s8Rssi;
-        int8_t s8Rsrp;
-        int8_t s8Rsrq;
-        int8_t s8Rssnr;
+        Ccid_Info_t sCcidInfo;
+        Signal_Info_t sSignalInfo;
         uint32_t u32TimeTaskStart = sys_time_ms();
 
         bool bGetCcidStatus = false;
@@ -1904,7 +1899,7 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
 
             if (!bGetCcidStatus)
             {
-                if (app_cellular_get_ccid(au8Ccid, &u8CcidLen) == TASK_STATUS_SUCCESS)
+                if (app_cellular_get_ccid(&sCcidInfo))
                 {
                     bGetCcidStatus = true;
                 }
@@ -1912,7 +1907,7 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
 
             if (!bGetSignalQualityStatus)
             {
-                if (app_cellular_get_signal_quality(&s8Rssi, &s8Rsrp, &s8Rsrq, &s8Rssnr) == TASK_STATUS_SUCCESS)
+                if (app_cellular_get_signal_quality(&sSignalInfo))
                 {
                     bGetSignalQualityStatus = true;
                 }
@@ -1927,26 +1922,23 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
 
         if (bGetCcidStatus)
         {
-            memcpy(p, au8Ccid, SIM_CCID_SIZE);
+            memcpy(p, sCcidInfo.au8Ccid, MAX_SIM_CCID_SIZE);
         }
         else
         {
-            memset(p, 0, SIM_CCID_SIZE);
+            memset(p, 0, MAX_SIM_CCID_SIZE);
         }
-        p += SIM_CCID_SIZE;
+        p += MAX_SIM_CCID_SIZE;
 
         if (bGetSignalQualityStatus)
         {
-            *p++ = s8Rssi;
-            *p++ = s8Rsrp;
-            *p++ = s8Rsrq;
-            *p++ = s8Rssnr;
+            memcpy(p, &sSignalInfo, sizeof(Signal_Info_t));
         }
         else
         {
-            memset(p, 0, 4);
-            p += 4;
+            memset(p, 0, sizeof(Signal_Info_t));
         }
+        p += sizeof(Signal_Info_t);
 
         break;
     }

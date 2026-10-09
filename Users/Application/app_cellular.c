@@ -16,6 +16,12 @@ static uint8_t u8RetryCount = 0;
 static uint8_t u8RetryStartSocketCount = 0;
 static uint8_t u8RetryConnectSocketCount = 0;
 
+static bool bCcidInfoValid = false;
+static Ccid_Info_t sCcidInfo;
+
+static bool bSignalInfoValid = false;
+static Signal_Info_t sSignalInfo;
+
 static uint32_t u32TimeConnect; // Use for connect network
 
 static bool bConnectedFlag = false;
@@ -121,6 +127,16 @@ void app_cellular_execute(void)
     case CELLULAR_STEP_CHECK_SIM:
         if (sv_cellular_check_sim() && (!bDateTimeIsValid || bPushPeriodFlag))
         {
+            if (sv_cellular_get_ccid(&sCcidInfo))
+            {
+                bCcidInfoValid = true;
+            }
+
+            if (sv_cellular_check_signal_quality(&sSignalInfo))
+            {
+                bSignalInfoValid = true;
+            }
+
             u8RetryCount = 0;
             eCellularStep = CELLULAR_STEP_CHECK_REGISTRATION_STATUS;
         }
@@ -382,6 +398,8 @@ void app_cellular_execute(void)
     case CELLULAR_STEP_OFF:
     default:
         sv_cellular_off();
+        bSignalInfoValid = false;
+        bCcidInfoValid = false;
         bCellularResultReady = true;
         bPushPeriodFlag = false;
         bConnectedFlag = false;
@@ -399,46 +417,40 @@ void app_cellular_push_activate(void)
     bPushPeriodFlag = true;
 }
 
-Task_Status_t app_cellular_get_ccid(uint8_t *pCcid, uint8_t *u8CcidLen)
+bool app_cellular_get_ccid(Ccid_Info_t *pInfo)
 {
-    if (eCellularStep == CELLULAR_STEP_IDLE)
+    if (pInfo == NULL)
     {
-        app_cellular_start();
-        return TASK_STATUS_RUNNING;
+        return false;
     }
 
-    if ((eCellularStep == CELLULAR_STEP_ON) || (eCellularStep == CELLULAR_STEP_WAIT_AT_READY))
+    if (bCcidInfoValid)
     {
-        return TASK_STATUS_RUNNING;
+        memcpy(pInfo, &sCcidInfo, sizeof(Ccid_Info_t));
     }
-
-    if (sv_cellular_get_ccid(pCcid, u8CcidLen))
+    else
     {
-        return TASK_STATUS_SUCCESS;
+        memset(pInfo, 0, sizeof(Ccid_Info_t));
     }
-
-    return TASK_STATUS_FAILED;
+    return bCcidInfoValid;
 }
 
-Task_Status_t app_cellular_get_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8Rsrq, int8_t *s8Rssnr)
+bool app_cellular_get_signal_quality(Signal_Info_t *pInfo)
 {
-    if (eCellularStep == CELLULAR_STEP_IDLE)
+    if (pInfo == NULL)
     {
-        app_cellular_start();
-        return TASK_STATUS_RUNNING;
+        return false;
     }
 
-    if ((eCellularStep == CELLULAR_STEP_ON) || (eCellularStep == CELLULAR_STEP_WAIT_AT_READY))
+    if (bSignalInfoValid)
     {
-        return TASK_STATUS_RUNNING;
+        memcpy(pInfo, &sSignalInfo, sizeof(Signal_Info_t));
     }
-
-    if (sv_cellular_check_signal_quality(s8Rssi, s8Rsrp, s8Rsrq, s8Rssnr))
+    else
     {
-        return TASK_STATUS_SUCCESS;
+        memset(pInfo, 0, sizeof(Signal_Info_t));
     }
-
-    return TASK_STATUS_FAILED;
+    return bSignalInfoValid;
 }
 
 bool app_cellular_send_data(const uint8_t *pData, uint16_t u16Len)

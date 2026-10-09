@@ -361,7 +361,7 @@ bool sv_cellular_receive_data(uint8_t *pData, uint16_t *u16Size)
     return true;
 }
 
-bool sv_cellular_get_ccid(uint8_t *pCcid, uint8_t *u8Len)
+bool sv_cellular_get_ccid(Ccid_Info_t *pInfo)
 {
     sv_cellular_flush_buffer();
     uint8_t au8AtCommand[] = "AT+CICCID\r\n";
@@ -380,8 +380,12 @@ bool sv_cellular_get_ccid(uint8_t *pCcid, uint8_t *u8Len)
             char *pEnd = strchr(p, '\r');
             if (pEnd)
             {
-                *u8Len = pEnd - p;
-                memcpy(pCcid, p, *u8Len);
+                pInfo->u8CcidLen = pEnd - p;
+                if (pInfo->u8CcidLen > MAX_SIM_CCID_SIZE)
+                {
+                    return false;
+                }
+                memcpy(pInfo->au8Ccid, p, pInfo->u8CcidLen);
                 return true;
             }
         }
@@ -390,7 +394,7 @@ bool sv_cellular_get_ccid(uint8_t *pCcid, uint8_t *u8Len)
     return false;
 }
 
-bool sv_cellular_check_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8Rsrq, int8_t *s8Rssnr)
+bool sv_cellular_check_signal_quality(Signal_Info_t *pInfo)
 {
     sv_cellular_flush_buffer();
     uint8_t au8AtCommand[] = "AT+CPSI?\r\n";
@@ -432,7 +436,7 @@ bool sv_cellular_check_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8
                         return false;
                     }
                     sValue = CLAMP(sValue, INT8_MIN, INT8_MAX);
-                    *s8Rsrq = (int8_t)sValue;
+                    pInfo->s8Rsrq = (int8_t)sValue;
                 }
                 else if (u8FieldIndex == 11) // RSRP
                 {
@@ -442,7 +446,7 @@ bool sv_cellular_check_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8
                         return false;
                     }
                     sValue = CLAMP(sValue, INT8_MIN, INT8_MAX);
-                    *s8Rsrp = (int8_t)sValue;
+                    pInfo->s8Rsrp = (int8_t)sValue;
                 }
                 else if (u8FieldIndex == 12) // RSSI
                 {
@@ -452,7 +456,7 @@ bool sv_cellular_check_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8
                         return false;
                     }
                     sValue = CLAMP(sValue, INT8_MIN, INT8_MAX);
-                    *s8Rssi = (int8_t)sValue;
+                    pInfo->s8Rssi = (int8_t)sValue;
                 }
                 else if (u8FieldIndex == 13) // RSSNR
                 {
@@ -462,7 +466,7 @@ bool sv_cellular_check_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8
                         return false;
                     }
                     sValue = CLAMP(sValue, INT8_MIN, INT8_MAX);
-                    *s8Rssnr = (int8_t)sValue;
+                    pInfo->s8Rssnr = (int8_t)sValue;
                 }
 
                 if ((*p == '\0') || (*p == '\r') || (*p == '\n'))

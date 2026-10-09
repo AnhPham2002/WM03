@@ -4,11 +4,25 @@
 
 #define CELLULAR_BUFFER_SIZE UART3_RX_BUFFER_SIZE
 
-#define SIM_CCID_SIZE 25
+#define MAX_SIM_CCID_SIZE 25
 
-#define AT_COMMAND_RESPONSE_TIMEOUT_NORMAL 9000	   // ms
+#define AT_COMMAND_RESPONSE_TIMEOUT_NORMAL 9000    // ms
 #define AT_COMMAND_RESPONSE_TIMEOUT_NETWORK 120000 // ms
-#define HES_RESPONSE_TIMEOUT 5000 // ms
+#define HES_RESPONSE_TIMEOUT 5000                  // ms
+
+typedef struct
+{
+    uint8_t au8Ccid[MAX_SIM_CCID_SIZE];
+    uint8_t u8CcidLen;
+} Ccid_Info_t;
+
+typedef struct
+{
+    int8_t s8Rssi;
+    int8_t s8Rsrp;
+    int8_t s8Rsrq;
+    int8_t s8Rssnr;
+} Signal_Info_t;
 
 /**
  * @brief Initialize cellular module service.
@@ -134,26 +148,26 @@ bool sv_cellular_send_data(const uint8_t *pData, uint16_t u16Size);
 bool sv_cellular_receive_data(uint8_t *pData, uint16_t *u16Size);
 
 /**
- * @brief Get SIM card CCID.
+ * @brief Get the SIM card ICCID.
  *
- * @param[out] pCcid CCID buffer.
- * @param[out] u8Len CCID length.
+ * Queries the cellular module and retrieves the ICCID.
  *
- * @return true if successful, otherwise false.
+ * @param[out] pInfo ICCID information.
+ *
+ * @return true if the ICCID is retrieved successfully, otherwise false.
  */
-bool sv_cellular_get_ccid(uint8_t *pCcid, uint8_t *u8Len);
+bool sv_cellular_get_ccid(Ccid_Info_t *pInfo);
 
 /**
- * @brief Get cellular signal quality.
+ * @brief Check cellular signal quality.
  *
- * @param[out] s8Rssi RSSI value.
- * @param[out] s8Rsrp RSRP value.
- * @param[out] s8Rsrq RSRQ value.
- * @param[out] s8Rssnr RSSNR value.
+ * Queries the cellular module and retrieves RSRQ, RSRP, RSSI, and RSSNR.
  *
- * @return true if successful, otherwise false.
+ * @param[out] pInfo Cellular signal information.
+ *
+ * @return true if the signal information is retrieved successfully, otherwise false.
  */
-bool sv_cellular_check_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8Rsrq, int8_t *s8Rssnr);
+bool sv_cellular_check_signal_quality(Signal_Info_t *pInfo);
 
 /**
  * @brief Update system time from NTP server.

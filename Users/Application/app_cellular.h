@@ -73,34 +73,26 @@ void app_cellular_execute(void);
 void app_cellular_push_activate(void);
 
 /**
- * @brief Get SIM card CCID from LTE module.
+ * @brief Get SIM card ICCID information.
  *
- * Starts the LTE module if it is idle and waits until the module is ready.
+ * Copies the cached ICCID information if valid; otherwise, clears the output.
  *
- * @param[out] pCcid      CCID output buffer.
- * @param[out] u8CcidLen  CCID length.
+ * @param[out] pInfo ICCID information.
  *
- * @retval TASK_STATUS_RUNNING LTE module is not ready yet.
- * @retval TASK_STATUS_SUCCESS CCID was read successfully.
- * @retval TASK_STATUS_FAILED  CCID read failed.
+ * @return true if the ICCID information is valid, otherwise false.
  */
-Task_Status_t app_cellular_get_ccid(uint8_t *pCcid, uint8_t *u8CcidLen);
+bool app_cellular_get_ccid(Ccid_Info_t *pInfo);
 
 /**
- * @brief Get LTE signal quality information.
+ * @brief Get cellular signal quality information.
  *
- * Starts the LTE module if it is idle and waits until the module is ready.
+ * Copies the cached signal information if valid; otherwise, clears the output.
  *
- * @param[out] s8Rssi RSSI value.
- * @param[out] s8Rsrp RSRP value.
- * @param[out] s8Rsrq RSRQ value.
- * @param[out] s8Rssnr RSSNR value.
+ * @param[out] pInfo Cellular signal information.
  *
- * @retval TASK_STATUS_RUNNING LTE module is not ready yet.
- * @retval TASK_STATUS_SUCCESS Signal quality was read successfully.
- * @retval TASK_STATUS_FAILED  Signal quality read failed.
+ * @return true if the signal information is valid, otherwise false.
  */
-Task_Status_t app_cellular_get_signal_quality(int8_t *s8Rssi, int8_t *s8Rsrp, int8_t *s8Rsrq, int8_t *s8Rssnr);
+bool app_cellular_get_signal_quality(Signal_Info_t *pInfo);
 
 /**
  * @brief Send data through LTE TCP socket.
