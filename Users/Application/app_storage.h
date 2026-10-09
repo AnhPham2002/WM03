@@ -70,8 +70,8 @@ typedef struct __attribute__((packed))
     uint16_t u16NextEventSaveIndex;
     uint16_t u16NextEventLoadIndex;
     uint16_t u16EventCount;
-    uint16_t u16NextLogSaveIndex;
-    uint16_t u16LogCount;
+    uint16_t u16NextPushStatusSaveIndex;
+    uint16_t u16PushStatusCount;
 } Eeprom_Metadata_t;
 
 typedef enum
@@ -225,22 +225,6 @@ typedef enum
 } Event_Code_t;
 
 /*==================================================================================================
-*                                               LOG
-==================================================================================================*/
-
-typedef struct __attribute__((packed))
-{
-    Date_Time_t sDateTime;
-    uint8_t u8MeterType;
-    uint8_t u8MeterIndex;
-    uint8_t u8LogCode;
-} Log_Data_t;
-
-#define LOG_PACKET_SIZE (ALIGN4(sizeof(Log_Data_t) + 2)) // +2 bytes CRC
-#define MAX_LOG_COUNT 83
-_Static_assert(MAX_LOG_COUNT <= (EEPROM_LOG_SIZE / LOG_PACKET_SIZE), "MAX_LOG_COUNT exceeds EEPROM capacity");
-
-/*==================================================================================================
 *                                           LATCH RECORD
 ==================================================================================================*/
 
@@ -255,6 +239,21 @@ typedef struct __attribute__((packed))
 #define LATCH_PACKET_SIZE (ALIGN4(sizeof(Latch_Data_t) + 2)) // +2 bytes CRC
 #define MAX_LATCH_COUNT 720
 _Static_assert(MAX_LATCH_COUNT <= (EEPROM_LATCH_SIZE / LATCH_PACKET_SIZE), "MAX_LATCH_COUNT exceeds EEPROM capacity");
+
+/*==================================================================================================
+*                                     PUSH STATUS LOG
+==================================================================================================*/
+
+typedef struct __attribute__((packed))
+{
+    Date_Time_t sDateTime;
+    uint8_t u8PushError;
+    uint8_t u8CellularError;
+} Push_Status_Data_t;
+
+#define PUSH_STATUS_PACKET_SIZE (ALIGN4(sizeof(Push_Status_Data_t) + 2)) // +2 bytes CRC
+#define MAX_PUSH_STATUS_COUNT 1000
+_Static_assert(MAX_PUSH_STATUS_COUNT <= (EEPROM_PUSH_STATUS_SIZE / PUSH_STATUS_PACKET_SIZE), "MAX_PUSH_STATUS_COUNT exceeds EEPROM capacity");
 
 /*==================================================================================================
 *                                PUBLIC FUNCTIONS DECLARATIONS
@@ -424,30 +423,31 @@ bool app_storage_event_load_latest(uint16_t u16EventIndex, Event_Data_t *pEvent)
 void app_storage_event_clear(void);
 
 /**
- * @brief Save log data to EEPROM.
+ * @brief Save push status data to EEPROM.
  *
- * Saves log data to the next available EEPROM slot and updates the log metadata.
+ * Saves push status data to the next available EEPROM slot and updates
+ * the push status metadata.
  *
- * @param[in] pLog Log data.
+ * @param[in] pData Push status data.
  *
- * @return true if the log data is saved successfully, otherwise false.
+ * @return true if the push status data is saved successfully, otherwise false.
  */
-bool app_storage_log_save(const Log_Data_t *pLog);
+bool app_storage_push_status_save(const Push_Status_Data_t *pData);
 
 /**
- * @brief Load the latest log data from EEPROM.
+ * @brief Load the latest push status data from EEPROM.
  *
- * @param[in]  u16LogIndex Log index relative to the latest log.
- * @param[out] pLog        Log data.
+ * @param[in]  u16Index Push status index relative to the latest record.
+ * @param[out] pData    Push status data.
  *
- * @return true if the log data is loaded successfully, otherwise false.
+ * @return true if the push status data is loaded successfully, otherwise false.
  */
-bool app_storage_log_load_latest(uint16_t u16LogIndex, Log_Data_t *pLog);
+bool app_storage_push_status_load_latest(uint16_t u16Index, Push_Status_Data_t *pData);
 
 /**
- * @brief Clear all stored log data.
+ * @brief Clear all stored push status data.
  */
-void app_storage_log_clear(void);
+void app_storage_push_status_clear(void);
 
 /**
  * @brief Save latch data to storage.

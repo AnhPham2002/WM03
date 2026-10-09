@@ -341,30 +341,30 @@ void app_storage_event_clear(void)
     app_storage_eeprom_metadata_save(&sEepromMetadata);
 }
 
-bool app_storage_log_save(const Log_Data_t *pLog)
+bool app_storage_push_status_save(const Push_Status_Data_t *pData)
 {
-    if (pLog == NULL)
+    if (pData == NULL)
     {
         return false;
     }
 
-    uint32_t u32WriteAddress = EEPROM_LOG_ADDRESS + (sEepromMetadata.u16NextLogSaveIndex * LOG_PACKET_SIZE);
+    uint32_t u32WriteAddress = EEPROM_PUSH_STATUS_ADDRESS + (sEepromMetadata.u16NextPushStatusSaveIndex * PUSH_STATUS_PACKET_SIZE);
 
-    if (!sv_eeprom_write(u32WriteAddress, (const uint8_t *)pLog, sizeof(Log_Data_t)))
+    if (!sv_eeprom_write(u32WriteAddress, (const uint8_t *)pData, sizeof(Push_Status_Data_t)))
     {
         return false;
     }
 
-    sEepromMetadata.u16NextLogSaveIndex++;
+    sEepromMetadata.u16NextPushStatusSaveIndex++;
 
-    if (sEepromMetadata.u16NextLogSaveIndex >= MAX_LOG_COUNT)
+    if (sEepromMetadata.u16NextPushStatusSaveIndex >= MAX_PUSH_STATUS_COUNT)
     {
-        sEepromMetadata.u16NextLogSaveIndex = 0;
+        sEepromMetadata.u16NextPushStatusSaveIndex = 0;
     }
 
-    if (sEepromMetadata.u16LogCount < MAX_LOG_COUNT)
+    if (sEepromMetadata.u16PushStatusCount < MAX_PUSH_STATUS_COUNT)
     {
-        sEepromMetadata.u16LogCount++;
+        sEepromMetadata.u16PushStatusCount++;
     }
 
     app_storage_eeprom_metadata_save(&sEepromMetadata);
@@ -372,26 +372,26 @@ bool app_storage_log_save(const Log_Data_t *pLog)
     return true;
 }
 
-bool app_storage_log_load_latest(uint16_t u16LogIndex, Log_Data_t *pLog)
+bool app_storage_push_status_load_latest(uint16_t u16Index, Push_Status_Data_t *pData)
 {
-    uint16_t u16LogReadIndex;
+    uint16_t u16ReadIndex;
     uint32_t u32ReadAddress;
 
-    if ((pLog == NULL) || (u16LogIndex >= sEepromMetadata.u16LogCount))
+    if ((pData == NULL) || (u16Index >= sEepromMetadata.u16PushStatusCount))
     {
         return false;
     }
 
-    u16LogReadIndex = (sEepromMetadata.u16NextLogSaveIndex + MAX_LOG_COUNT - 1U - u16LogIndex) % MAX_LOG_COUNT;
+    u16ReadIndex = (sEepromMetadata.u16NextPushStatusSaveIndex + MAX_PUSH_STATUS_COUNT - 1U - u16Index) % MAX_PUSH_STATUS_COUNT;
 
-    u32ReadAddress = EEPROM_LOG_ADDRESS + (u16LogReadIndex * LOG_PACKET_SIZE);
+    u32ReadAddress = EEPROM_PUSH_STATUS_ADDRESS + (u16ReadIndex * PUSH_STATUS_PACKET_SIZE);
 
-    return sv_eeprom_read(u32ReadAddress, (uint8_t *)pLog, sizeof(Log_Data_t));
+    return sv_eeprom_read(u32ReadAddress, (uint8_t *)pData, sizeof(Push_Status_Data_t));
 }
 
-void app_storage_log_clear(void)
+void app_storage_push_status_clear(void)
 {
-    sEepromMetadata.u16LogCount = 0;
+    sEepromMetadata.u16PushStatusCount = 0;
 
     app_storage_eeprom_metadata_save(&sEepromMetadata);
 }

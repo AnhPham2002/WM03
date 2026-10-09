@@ -34,6 +34,19 @@ typedef enum
 	CELLULAR_STEP_OFF
 } Cellular_Step_t;
 
+typedef enum
+{
+    CELLULAR_ERROR_NONE = 0,
+    CELLULAR_ERROR_POWER_ON,
+    CELLULAR_ERROR_AT_READY,
+    CELLULAR_ERROR_SIM_NOT_READY,
+    CELLULAR_ERROR_NETWORK_NOT_REGISTERED,
+    CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY,
+    CELLULAR_ERROR_DATE_TIME_SYNC,
+    CELLULAR_ERROR_GET_DATE_TIME,
+    CELLULAR_ERROR_TCP_CONNECT
+} Cellular_Error_t;
+
 /**
  * @brief Initialize cellular application.
  */
@@ -120,3 +133,12 @@ bool app_cellular_receive_data(uint8_t *pData, uint16_t *u16Len);
  * @return true if the cellular connection is active, otherwise false.
  */
 bool app_cellular_get_connection_status(void);
+
+/**
+ * @brief Get and clear the current cellular error.
+ *
+ * @param[out] pErr Current cellular error.
+ *
+ * @return true if the cellular cycle is finished, otherwise false.
+ */
+bool app_cellular_get_error(Cellular_Error_t *pErr);

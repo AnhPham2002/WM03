@@ -52,7 +52,7 @@ typedef enum
     X(CONFIG_MCU_RESET_COUNT, 0x11)          \
     X(CONFIG_ERASE_MEASUREMENT_DATA, 0x12)   \
     X(CONFIG_ERASE_EVENT_DATA, 0x13)         \
-    X(CONFIG_ERASE_LOG_DATA, 0x14)           \
+    X(CONFIG_ERASE_PUSH_STATUS_DATA, 0x14)   \
     X(CONFIG_FACTORY_RESET, 0x15)            \
     X(CONFIG_LATCH_IMMEDIATELY, 0x16)        \
     X(CONFIG_PUSH_IMMEDIATELY, 0x17)         \
@@ -77,8 +77,7 @@ typedef enum
     X(QUERY_LATCH, 0x07)                \
     X(QUERY_EVENT, 0x08)                \
     X(QUERY_PUSH_STATUS, 0x09)          \
-    X(QUERY_LOG, 0x0A)                  \
-    X(QUERY_METADATA, 0x0B)
+    X(QUERY_METADATA, 0x0A)
 
 typedef enum
 {
