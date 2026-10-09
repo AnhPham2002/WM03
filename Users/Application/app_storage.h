@@ -247,6 +247,11 @@ _Static_assert(MAX_LATCH_COUNT <= (EEPROM_LATCH_SIZE / LATCH_PACKET_SIZE), "MAX_
 typedef struct __attribute__((packed))
 {
     Date_Time_t sDateTime;
+    uint16_t u16SessionDuration;
+    int8_t s8Rssi;
+    int8_t s8Rsrp;
+    int8_t s8Rsrq;
+    int8_t s8Rssnr;
     uint8_t u8PushError;
     uint8_t u8CellularError;
 } Push_Status_Data_t;

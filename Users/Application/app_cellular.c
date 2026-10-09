@@ -3,6 +3,7 @@
 #define RAM_NOINIT_DATE_TIME_MAGIC_NUMBER 0x87654321
 
 static volatile bool bPushPeriodFlag = false;
+static uint32_t u32TimeStartPushSession;
 
 static uint32_t u32DateTimeMagic RAM_NOINIT;
 static bool bDateTimeIsValid RAM_NOINIT;
@@ -414,6 +415,7 @@ void app_cellular_execute(void)
 
 void app_cellular_push_activate(void)
 {
+    u32TimeStartPushSession = sys_time_ms();
     bPushPeriodFlag = true;
 }
 
@@ -511,4 +513,9 @@ bool app_cellular_get_error(Cellular_Error_t *pErr)
     bCellularResultReady = false;
 
     return true;
+}
+
+uint32_t app_cellular_get_push_session_time(void)
+{
+    return (sys_time_ms() - u32TimeStartPushSession + 500) / 1000;
 }

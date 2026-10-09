@@ -100,6 +100,16 @@ void app_push_execute(void)
         case PUSH_STEP_SEND_INFO:
             if (!bWaitingResponse)
             {
+                Signal_Info_t sSignalInfo;
+                if (!app_cellular_get_signal_quality(&sSignalInfo))
+                {
+                    memset(&sSignalInfo, 0, sizeof(sSignalInfo));
+                }
+                sPushStatusData.s8Rssi = sSignalInfo.s8Rssi;
+                sPushStatusData.s8Rsrp = sSignalInfo.s8Rsrp;
+                sPushStatusData.s8Rsrq = sSignalInfo.s8Rsrq;
+                sPushStatusData.s8Rssnr = sSignalInfo.s8Rssnr;
+
                 app_protocol_pack_push_info(au8TxData, &u16TxDataLen);
                 app_cellular_send_data(au8TxData, u16TxDataLen);
                 u32ResponseTime = sys_time_ms();
@@ -327,6 +337,7 @@ void app_push_execute(void)
         if (bPushCycleFinished || (eCellularError != CELLULAR_ERROR_NONE))
         {
             sv_time_get_date_time(&sPushStatusData.sDateTime);
+            sPushStatusData.u16SessionDuration = app_cellular_get_push_session_time();
             sPushStatusData.u8CellularError = eCellularError;
             sPushStatusData.u8PushError = ePushError;
             app_storage_push_status_save(&sPushStatusData);

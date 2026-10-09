@@ -1,6 +1,4 @@
 #include "app_protocol.h"
-#include "app_cellular.h"
-#include "sv_cellular.h"
 
 static Ota_Metadata_t *const pOtaMetadata = (Ota_Metadata_t *)RAM_NOINIT_OTA_METADATA_ADDRESS;
 
@@ -559,6 +557,17 @@ static void app_protocol_pack_push_status_payload(const Push_Status_Data_t *pPus
 
     memcpy(p, &pPushStatus->sDateTime, sizeof(pPushStatus->sDateTime));
     p += sizeof(pPushStatus->sDateTime);
+
+    memcpy(p, &pPushStatus->u16SessionDuration, sizeof(pPushStatus->u16SessionDuration));
+    p += sizeof(pPushStatus->u16SessionDuration);
+
+    *p++ = pPushStatus->s8Rssi;
+
+    *p++ = pPushStatus->s8Rsrp;
+
+    *p++ = pPushStatus->s8Rsrq;
+
+    *p++ = pPushStatus->s8Rssnr;
 
     *p++ = pPushStatus->u8CellularError;
 

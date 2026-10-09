@@ -134,3 +134,12 @@ bool app_cellular_get_connection_status(void);
  * @return true if the cellular cycle is finished, otherwise false.
  */
 bool app_cellular_get_error(Cellular_Error_t *pErr);
+
+/**
+ * @brief Get the current push session duration.
+ *
+ * Rounds the duration to the nearest second.
+ *
+ * @return Push session duration in seconds.
+ */
+uint32_t app_cellular_get_push_session_time(void);
