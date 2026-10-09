@@ -166,7 +166,7 @@ void app_push_execute(void)
 
     case PUSH_STEP_SEND_EVENT:
     {
-        uint8_t u8EventPackCount;
+        static uint8_t u8EventPackCount;
 
         if (!bWaitingResponse)
         {
