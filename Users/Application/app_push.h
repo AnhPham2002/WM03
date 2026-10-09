@@ -10,14 +10,21 @@ typedef enum
 {
     PUSH_STEP_IDLE = 0,
     PUSH_STEP_SEND_INFO,
-    // PUSH_STEP_SEND_MODULE_CONFIG,
-    // PUSH_STEP_SEND_PULSE_METER_CONFIG,
-    // PUSH_STEP_SEND_MODBUS_METER_CONFIG,
-    // PUSH_STEP_SEND_PRESSURE_SENSOR_CONFIG,
     PUSH_STEP_SEND_LATCH,
     PUSH_STEP_SEND_EVENT,
     PUSH_STEP_UPDATE_METADATA
 } Push_Step_t;
+
+typedef enum
+{
+    PUSH_ERROR_NONE = 0,
+    PUSH_ERROR_DISCONNECT,
+    PUSH_ERROR_PACK,
+    PUSH_ERROR_INFO,
+    PUSH_ERROR_LATCH,
+    PUSH_ERROR_EVENT,
+    PUSH_ERROR_REQUEST_PROCESS
+} Push_Error_t;
 
 /**
  * @brief Execute the data push process.
@@ -34,3 +41,10 @@ void app_push_execute(void);
  * Sets the data push request flag.
  */
 void app_push_activate(void);
+
+/**
+ * @brief Trigger an immediate data push.
+ *
+ * Activates the cellular data push process and sets the pushing flag.
+ */
+void app_push_immediately(void);

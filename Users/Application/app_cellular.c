@@ -1,6 +1,10 @@
 #include "app_cellular.h"
 
 static volatile bool bPushPeriodFlag = false;
+static uint32_t u32TimeStartPushSession;
+
+static bool bCellularResultReady = false;
+static Cellular_Error_t eCellularError = CELLULAR_ERROR_NONE;
 
 static Cellular_Step_t eCellularStep = CELLULAR_STEP_IDLE;
 static uint8_t u8ResetCount = 0;
@@ -38,20 +42,16 @@ void app_cellular_start(void)
 {
     if (eCellularStep == CELLULAR_STEP_IDLE)
     {
+        eCellularError = CELLULAR_ERROR_NONE;
+        bCellularResultReady = false;
+        bConnectedFlag = false;
         eCellularStep = CELLULAR_STEP_ON;
     }
 }
 
 void app_cellular_stop(void)
 {
-    sv_cellular_off();
-    bPushPeriodFlag = false;
-    bConnectedFlag = false;
-    u8RetryCount = 0;
-    u8ResetCount = 0;
-    u8RetryStartSocketCount = 0;
-    u8RetryConnectSocketCount = 0;
-    eCellularStep = CELLULAR_STEP_IDLE;
+    eCellularStep = CELLULAR_STEP_CLOSE_TCP_SOCKET;
 }
 
 void app_cellular_execute(void)
@@ -74,8 +74,9 @@ void app_cellular_execute(void)
         }
         else
         {
-            if (u8RetryCount >= CELLULAR_RETRY)
+            if (++u8RetryCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_POWER_ON;
                 eCellularStep = CELLULAR_STEP_OFF;
             }
         }
@@ -84,6 +85,7 @@ void app_cellular_execute(void)
     case CELLULAR_STEP_WAIT_AT_READY:
         if (sys_time_ms() - u32TimeConnect >= CELLULAR_WAIT_FOR_READY)
         {
+            eCellularError = CELLULAR_ERROR_AT_READY;
             eCellularStep = CELLULAR_STEP_OFF;
         }
         else
@@ -106,6 +108,7 @@ void app_cellular_execute(void)
         {
             if (++u8RetryCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_AT_READY;
                 eCellularStep = CELLULAR_STEP_OFF;
             }
         }
@@ -121,6 +124,7 @@ void app_cellular_execute(void)
         {
             if (++u8RetryCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_SIM_NOT_READY;
                 eCellularStep = CELLULAR_STEP_OFF;
             }
         }
@@ -175,8 +179,8 @@ void app_cellular_execute(void)
         {
             if (++u8RetryCount >= CELLULAR_RETRY)
             {
-                u8RetryCount = 0;
-                eCellularStep = CELLULAR_STEP_RESET;
+                eCellularError = CELLULAR_ERROR_NETWORK_NOT_REGISTERED;
+                eCellularStep = CELLULAR_STEP_OFF;
             }
         }
         break;
@@ -198,6 +202,7 @@ void app_cellular_execute(void)
                 u8RetryCount = 0;
                 if (++u8NtpServerIndex >= ARRAY_SIZE(au8NtpServer))
                 {
+                    eCellularError = CELLULAR_ERROR_DATE_TIME_SYNC;
                     u8NtpServerIndex = 0;
                     eCellularStep = CELLULAR_STEP_OFF;
                 }
@@ -220,6 +225,7 @@ void app_cellular_execute(void)
                 }
                 else
                 {
+                    eCellularError = CELLULAR_ERROR_NONE;
                     eCellularStep = CELLULAR_STEP_OFF;
                 }
             }
@@ -228,6 +234,7 @@ void app_cellular_execute(void)
         {
             if (++u8RetryCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_GET_DATE_TIME;
                 eCellularStep = CELLULAR_STEP_OFF;
             }
         }
@@ -245,6 +252,7 @@ void app_cellular_execute(void)
         {
             if (++u8RetryCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
                 eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
             }
         }
@@ -266,6 +274,7 @@ void app_cellular_execute(void)
                 {
                     if (++u8RetryStartSocketCount >= CELLULAR_RETRY)
                     {
+                        eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
                         eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
                     }
                     else
@@ -278,6 +287,7 @@ void app_cellular_execute(void)
             {
                 if (++u8RetryCount >= CELLULAR_RETRY)
                 {
+                    eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
                     eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
                 }
             }
@@ -286,6 +296,7 @@ void app_cellular_execute(void)
         {
             if (++u8RetryStartSocketCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
                 eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
             }
             else
@@ -309,6 +320,7 @@ void app_cellular_execute(void)
         {
             if (++u8RetryCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_TCP_CONNECT;
                 eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
             }
         }
@@ -331,6 +343,7 @@ void app_cellular_execute(void)
                 {
                     if (++u8RetryConnectSocketCount >= CELLULAR_RETRY)
                     {
+                        eCellularError = CELLULAR_ERROR_TCP_CONNECT;
                         eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
                     }
                     else
@@ -343,6 +356,7 @@ void app_cellular_execute(void)
             {
                 if (++u8RetryCount >= CELLULAR_RETRY)
                 {
+                    eCellularError = CELLULAR_ERROR_TCP_CONNECT;
                     eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
                 }
             }
@@ -351,6 +365,7 @@ void app_cellular_execute(void)
         {
             if (++u8RetryConnectSocketCount >= CELLULAR_RETRY)
             {
+                eCellularError = CELLULAR_ERROR_TCP_CONNECT;
                 eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
             }
             else
@@ -361,6 +376,7 @@ void app_cellular_execute(void)
         break;
 
     case CELLULAR_STEP_COMMUNICATE:
+        eCellularError = CELLULAR_ERROR_NONE;
         bConnectedFlag = true;
         break;
 
@@ -391,10 +407,27 @@ void app_cellular_execute(void)
         break;
 
     case CELLULAR_STEP_OFF:
+        sv_cellular_off();
+        bSignalInfoValid = false;
+        bCcidInfoValid = false;
+        if (bPushPeriodFlag)
+        {
+            bCellularResultReady = true;
+        }
+        bPushPeriodFlag = false;
+        bConnectedFlag = false;
+        u8RetryCount = 0;
+        u8ResetCount = 0;
+        u8RetryStartSocketCount = 0;
+        u8RetryConnectSocketCount = 0;
+        eCellularStep = CELLULAR_STEP_IDLE;
+        break;
+
     default:
         sv_cellular_off();
         bSignalInfoValid = false;
         bCcidInfoValid = false;
+        bCellularResultReady = false;
         bPushPeriodFlag = false;
         bConnectedFlag = false;
         u8RetryCount = 0;
@@ -408,6 +441,7 @@ void app_cellular_execute(void)
 
 void app_cellular_push_activate(void)
 {
+    u32TimeStartPushSession = sys_time_ms();
     bPushPeriodFlag = true;
 }
 
@@ -456,7 +490,10 @@ bool app_cellular_send_data(const uint8_t *pData, uint16_t u16Len)
 
     if (bConnectedFlag)
     {
-        return sv_cellular_send_data(pData, u16Len);
+        if (sv_cellular_send_data(pData, u16Len))
+        {
+            return true;
+        }
     }
 
     return false;
@@ -471,7 +508,10 @@ bool app_cellular_receive_data(uint8_t *pData, uint16_t *u16Len)
 
     if (bConnectedFlag)
     {
-        return sv_cellular_receive_data(pData, u16Len);
+        if (sv_cellular_receive_data(pData, u16Len))
+        {
+            return true;
+        }
     }
 
     return false;
@@ -480,4 +520,28 @@ bool app_cellular_receive_data(uint8_t *pData, uint16_t *u16Len)
 bool app_cellular_get_connection_status(void)
 {
     return bConnectedFlag;
+}
+
+bool app_cellular_get_error(Cellular_Error_t *pErr)
+{
+    if (pErr == NULL)
+    {
+        return false;
+    }
+
+    if (!bCellularResultReady)
+    {
+        return false;
+    }
+
+    *pErr = eCellularError;
+    eCellularError = CELLULAR_ERROR_NONE;
+    bCellularResultReady = false;
+
+    return true;
+}
+
+uint32_t app_cellular_get_push_session_time(void)
+{
+    return (sys_time_ms() - u32TimeStartPushSession + 500) / 1000;
 }

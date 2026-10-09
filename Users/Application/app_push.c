@@ -13,6 +13,16 @@ typedef struct
 
 static volatile Push_Status_t sPushStatus RAM_NOINIT;
 
+static Push_Status_Data_t sPushStatusData;
+
+static Signal_Info_t sSignalInfo;
+static bool bSignalInfoValid = false;
+
+static bool bPushing = false;
+static bool bPushCycleFinished = false;
+static bool bRequestProcess = false;
+static Push_Error_t ePushError = PUSH_ERROR_NONE;
+
 static Push_Step_t ePushStep = PUSH_STEP_IDLE;
 static uint8_t u8RetryCount = 0;
 static uint16_t u16LatchIndex = 0;
@@ -59,195 +69,296 @@ void app_push_execute(void)
         {
             app_cellular_push_activate();
             sPushStatus.bPushWaiting = false;
+            bPushing = true;
         }
     }
 
     app_cellular_execute();
 
+    if ((!bSignalInfoValid) && bPushing)
+    {
+        bSignalInfoValid = app_cellular_get_signal_quality(&sSignalInfo);
+    }
+
     if (!app_cellular_get_connection_status())
     {
         ePushStep = PUSH_STEP_IDLE;
         bWaitingResponse = false;
-        return;
+        bRequestProcess = false;
+        if (bPushing && (ePushStep != PUSH_STEP_IDLE))
+        {
+            bPushing = false;
+            bPushCycleFinished = true;
+
+            if (ePushError == PUSH_ERROR_NONE)
+            {
+                ePushError = PUSH_ERROR_DISCONNECT;
+            }
+        }
+    }
+    else
+    {
+        switch (ePushStep)
+        {
+        case PUSH_STEP_IDLE:
+            bWaitingResponse = false;
+            ePushStep = PUSH_STEP_SEND_INFO;
+            break;
+
+        case PUSH_STEP_SEND_INFO:
+            if (!bWaitingResponse)
+            {
+                app_protocol_pack_push_info(au8TxData, &u16TxDataLen);
+                app_cellular_send_data(au8TxData, u16TxDataLen);
+                u32ResponseTime = sys_time_ms();
+                bWaitingResponse = true;
+            }
+            else if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
+            {
+                bWaitingResponse = false;
+
+                eErrCode = app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
+
+                if (eErrCode == PROTOCOL_ERR_PUSH_INFO_SUCCESS)
+                {
+                    u8RetryCount = 0;
+                    bRequestProcess = false;
+                    ePushStep = PUSH_STEP_SEND_LATCH;
+                }
+                else if (eErrCode == PROTOCOL_ERR_PUSH_INFO_FAILED)
+                {
+                    ePushError = PUSH_ERROR_INFO;
+                    u8RetryCount++;
+                }
+                else
+                {
+                    bRequestProcess = true;
+                    app_cellular_send_data(au8TxData, u16TxDataLen);
+                    u32ResponseTime = sys_time_ms();
+                    bWaitingResponse = true;
+                }
+            }
+            else if (sys_time_ms() - u32ResponseTime >= PUSH_RESPONSE_TIMEOUT_MS)
+            {
+                if (bRequestProcess)
+                {
+                    bRequestProcess = false;
+                    ePushError = PUSH_ERROR_REQUEST_PROCESS;
+                }
+                else
+                {
+                    ePushError = PUSH_ERROR_INFO;
+                }
+                bWaitingResponse = false;
+                u8RetryCount++;
+            }
+            break;
+
+        case PUSH_STEP_SEND_LATCH:
+            if (!bWaitingResponse)
+            {
+                if (app_protocol_pack_push_latch(u16LatchIndex, au8TxData, &u16TxDataLen))
+                {
+                    app_cellular_send_data(au8TxData, u16TxDataLen);
+                    u32ResponseTime = sys_time_ms();
+                    bWaitingResponse = true;
+                }
+                else
+                {
+                    bRequestProcess = false;
+                    ePushStep = PUSH_STEP_SEND_EVENT;
+                }
+            }
+            else if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
+            {
+                bWaitingResponse = false;
+
+                eErrCode = app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
+
+                if (eErrCode == PROTOCOL_ERR_PUSH_LATCH_SUCCESS)
+                {
+                    u16LatchIndex++;
+                    u8RetryCount = 0;
+                }
+                else if (eErrCode == PROTOCOL_ERR_PUSH_LATCH_FAILED)
+                {
+                    ePushError = PUSH_ERROR_LATCH;
+                    u8RetryCount++;
+                }
+                else
+                {
+                    bRequestProcess = true;
+                    app_cellular_send_data(au8TxData, u16TxDataLen);
+                    u32ResponseTime = sys_time_ms();
+                    bWaitingResponse = true;
+                }
+            }
+            else if (sys_time_ms() - u32ResponseTime >= PUSH_RESPONSE_TIMEOUT_MS)
+            {
+                if (bRequestProcess)
+                {
+                    bRequestProcess = false;
+                    ePushError = PUSH_ERROR_REQUEST_PROCESS;
+                }
+                else
+                {
+                    ePushError = PUSH_ERROR_LATCH;
+                }
+                bWaitingResponse = false;
+                u8RetryCount++;
+            }
+            break;
+
+        case PUSH_STEP_SEND_EVENT:
+        {
+            static uint8_t u8EventPackCount;
+
+            if (!bWaitingResponse)
+            {
+                if (app_protocol_pack_push_event(u16EventIndex, &u8EventPackCount, au8TxData, &u16TxDataLen))
+                {
+                    app_cellular_send_data(au8TxData, u16TxDataLen);
+                    u32ResponseTime = sys_time_ms();
+                    bWaitingResponse = true;
+                }
+                else
+                {
+                    bRequestProcess = false;
+                    ePushStep = PUSH_STEP_UPDATE_METADATA;
+                }
+            }
+            else if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
+            {
+                bWaitingResponse = false;
+
+                eErrCode = app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
+
+                if (eErrCode == PROTOCOL_ERR_PUSH_EVENT_SUCCESS)
+                {
+                    u16EventIndex += u8EventPackCount;
+                    u8RetryCount = 0;
+                }
+                else if (eErrCode == PROTOCOL_ERR_PUSH_EVENT_FAILED)
+                {
+                    ePushError = PUSH_ERROR_EVENT;
+                    u8RetryCount++;
+                }
+                else
+                {
+                    bRequestProcess = true;
+                    app_cellular_send_data(au8TxData, u16TxDataLen);
+                    u32ResponseTime = sys_time_ms();
+                    bWaitingResponse = true;
+                }
+            }
+            else if (sys_time_ms() - u32ResponseTime >= PUSH_RESPONSE_TIMEOUT_MS)
+            {
+                if (bRequestProcess)
+                {
+                    bRequestProcess = false;
+                    ePushError = PUSH_ERROR_REQUEST_PROCESS;
+                }
+                else
+                {
+                    ePushError = PUSH_ERROR_EVENT;
+                }
+                bWaitingResponse = false;
+                u8RetryCount++;
+            }
+            break;
+        }
+
+        case PUSH_STEP_UPDATE_METADATA:
+        default:
+            if ((u16LatchIndex != 0) || (u16EventIndex != 0))
+            {
+                app_storage_update_load_index(u16LatchIndex, u16EventIndex);
+                u16LatchIndex = 0;
+                u16EventIndex = 0;
+            }
+
+            if (sys_time_ms() - u32ResponseTime < PUSH_RESPONSE_TIMEOUT_MS)
+            {
+                if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
+                {
+                    bWaitingResponse = true;
+                    u32ResponseTime = sys_time_ms();
+                    app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
+                    app_cellular_send_data(au8TxData, u16TxDataLen);
+                }
+            }
+            else
+            {
+                if (bWaitingResponse)
+                {
+                    ePushError = PUSH_ERROR_REQUEST_PROCESS;
+                    u8RetryCount++;
+                }
+                else
+                {
+                    ePushError = PUSH_ERROR_NONE;
+                    u8RetryCount = 0;
+                    bPushing = false;
+                    bRequestProcess = false;
+                    bWaitingResponse = false;
+                    bPushCycleFinished = true;
+                    ePushStep = PUSH_STEP_IDLE;
+                    app_cellular_stop();
+                }
+            }
+
+            break;
+        }
+
+        if (u8RetryCount >= PUSH_RETRY)
+        {
+            if ((u16LatchIndex != 0) || (u16EventIndex != 0))
+            {
+                app_storage_update_load_index(u16LatchIndex, u16EventIndex);
+                u16LatchIndex = 0;
+                u16EventIndex = 0;
+            }
+
+            u8RetryCount = 0;
+            bPushing = false;
+            bRequestProcess = false;
+            bWaitingResponse = false;
+            bPushCycleFinished = true;
+            ePushStep = PUSH_STEP_IDLE;
+            app_cellular_stop();
+        }
     }
 
-    switch (ePushStep)
+    Cellular_Error_t eCellularError;
+    if (app_cellular_get_error(&eCellularError))
     {
-    case PUSH_STEP_IDLE:
-        bWaitingResponse = false;
-        ePushStep = PUSH_STEP_SEND_INFO;
-        break;
-
-    case PUSH_STEP_SEND_INFO:
-        if (!bWaitingResponse)
+        if (bPushCycleFinished || (eCellularError != CELLULAR_ERROR_NONE))
         {
-            if (app_protocol_pack_push_info(au8TxData, &u16TxDataLen))
+            if (bSignalInfoValid)
             {
-                app_cellular_send_data(au8TxData, u16TxDataLen);
-                u32ResponseTime = sys_time_ms();
-                bWaitingResponse = true;
+                bSignalInfoValid = false;
+                sPushStatusData.s8Rssi = sSignalInfo.s8Rssi;
+                sPushStatusData.s8Rsrp = sSignalInfo.s8Rsrp;
+                sPushStatusData.s8Rsrq = sSignalInfo.s8Rsrq;
+                sPushStatusData.s8Rssnr = sSignalInfo.s8Rssnr;
             }
             else
             {
-                u8RetryCount++;
+                sPushStatusData.s8Rssi = 0;
+                sPushStatusData.s8Rsrp = 0;
+                sPushStatusData.s8Rsrq = 0;
+                sPushStatusData.s8Rssnr = 0;
             }
+
+            sv_time_get_date_time(&sPushStatusData.sDateTime);
+            sPushStatusData.u16SessionDuration = app_cellular_get_push_session_time();
+            sPushStatusData.u8CellularError = eCellularError;
+            sPushStatusData.u8PushError = ePushError;
+            app_storage_push_status_save(&sPushStatusData);
+
+            ePushError = PUSH_ERROR_NONE;
+            bPushCycleFinished = false;
         }
-        else if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
-        {
-            bWaitingResponse = false;
-
-            eErrCode = app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
-
-            if (eErrCode == PROTOCOL_ERR_PUSH_INFO_SUCCESS)
-            {
-                u8RetryCount = 0;
-                ePushStep = PUSH_STEP_SEND_LATCH;
-            }
-            else if (eErrCode == PROTOCOL_ERR_PUSH_INFO_FAILED)
-            {
-                u8RetryCount++;
-            }
-            else
-            {
-                app_cellular_send_data(au8TxData, u16TxDataLen);
-                u32ResponseTime = sys_time_ms();
-                bWaitingResponse = true;
-            }
-        }
-        else if (sys_time_ms() - u32ResponseTime >= PUSH_RESPONSE_TIMEOUT_MS)
-        {
-            bWaitingResponse = false;
-            u8RetryCount++;
-        }
-        break;
-
-    case PUSH_STEP_SEND_LATCH:
-        if (!bWaitingResponse)
-        {
-            if (app_protocol_pack_push_latch(u16LatchIndex, au8TxData, &u16TxDataLen))
-            {
-                app_cellular_send_data(au8TxData, u16TxDataLen);
-                u32ResponseTime = sys_time_ms();
-                bWaitingResponse = true;
-            }
-            else
-            {
-                ePushStep = PUSH_STEP_SEND_EVENT;
-            }
-        }
-        else if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
-        {
-            bWaitingResponse = false;
-
-            eErrCode = app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
-
-            if (eErrCode == PROTOCOL_ERR_PUSH_LATCH_SUCCESS)
-            {
-                u16LatchIndex++;
-                u8RetryCount = 0;
-            }
-            else if (eErrCode == PROTOCOL_ERR_PUSH_LATCH_FAILED)
-            {
-                u8RetryCount++;
-            }
-            else
-            {
-                app_cellular_send_data(au8TxData, u16TxDataLen);
-                u32ResponseTime = sys_time_ms();
-                bWaitingResponse = true;
-            }
-        }
-        else if (sys_time_ms() - u32ResponseTime >= PUSH_RESPONSE_TIMEOUT_MS)
-        {
-            bWaitingResponse = false;
-            u8RetryCount++;
-        }
-        break;
-
-    case PUSH_STEP_SEND_EVENT:
-    {
-        static uint8_t u8EventPackCount;
-
-        if (!bWaitingResponse)
-        {
-            if (app_protocol_pack_push_event(u16EventIndex, &u8EventPackCount, au8TxData, &u16TxDataLen))
-            {
-                app_cellular_send_data(au8TxData, u16TxDataLen);
-                u32ResponseTime = sys_time_ms();
-                bWaitingResponse = true;
-            }
-            else
-            {
-                ePushStep = PUSH_STEP_UPDATE_METADATA;
-            }
-        }
-        else if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
-        {
-            bWaitingResponse = false;
-
-            eErrCode = app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
-
-            if (eErrCode == PROTOCOL_ERR_PUSH_EVENT_SUCCESS)
-            {
-                u16EventIndex += u8EventPackCount;
-                u8RetryCount = 0;
-            }
-            else if (eErrCode == PROTOCOL_ERR_PUSH_EVENT_FAILED)
-            {
-                u8RetryCount++;
-            }
-            else
-            {
-                app_cellular_send_data(au8TxData, u16TxDataLen);
-                u32ResponseTime = sys_time_ms();
-                bWaitingResponse = true;
-            }
-        }
-        else if (sys_time_ms() - u32ResponseTime >= PUSH_RESPONSE_TIMEOUT_MS)
-        {
-            bWaitingResponse = false;
-            u8RetryCount++;
-        }
-        break;
-    }
-
-    case PUSH_STEP_UPDATE_METADATA:
-    default:
-        if ((u16LatchIndex != 0) || (u16EventIndex != 0))
-        {
-            app_storage_update_load_index(u16LatchIndex, u16EventIndex);
-            u16LatchIndex = 0;
-            u16EventIndex = 0;
-        }
-
-        u8RetryCount = 0;
-        bWaitingResponse = false;
-
-        if (app_cellular_receive_data(au8RxData, &u16RxDataLen))
-        {
-            app_protocol_process(PROTOCOL_DATA_SOURCE_CELLULAR, au8RxData, u16RxDataLen, au8TxData, &u16TxDataLen);
-            app_cellular_send_data(au8TxData, u16TxDataLen);
-        }
-
-        ePushStep = PUSH_STEP_IDLE;
-        app_cellular_stop();
-        
-        break;
-    }
-
-    if (u8RetryCount >= PUSH_RETRY)
-    {
-        if ((u16LatchIndex != 0) || (u16EventIndex != 0))
-        {
-            app_storage_update_load_index(u16LatchIndex, u16EventIndex);
-            u16LatchIndex = 0;
-            u16EventIndex = 0;
-        }
-
-        u8RetryCount = 0;
-        bWaitingResponse = false;
-        ePushStep = PUSH_STEP_IDLE;
-        app_cellular_stop();
     }
 }
 
@@ -255,6 +366,12 @@ void app_push_activate(void)
 {
     sPushStatus.bPushWaiting = true;
     sPushStatus.u32TriggerTimestamp = sv_time_get_unix_timestamp();
+}
+
+void app_push_immediately(void)
+{
+    app_cellular_push_activate();
+    bPushing = true;
 }
 
 /*==================================================================================================

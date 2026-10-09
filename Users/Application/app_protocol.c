@@ -1,5 +1,7 @@
 #include "app_protocol.h"
 
+#include "app_push.h"
+
 static Ota_Metadata_t *const pOtaMetadata = (Ota_Metadata_t *)RAM_NOINIT_OTA_METADATA_ADDRESS;
 
 static uint32_t u32LastTimeAccess;
@@ -73,6 +75,18 @@ static void app_protocol_pack_latch_payload(const Latch_Data_t *pLatch, uint8_t 
  * @param[out] u16PayloadLen Output payload size in bytes.
  */
 static void app_protocol_pack_event_payload(const Event_Data_t *pEventList, uint8_t u8EventCount, uint8_t *pPayload, uint16_t *u16PayloadLen);
+
+/**
+ * @brief Pack push status data into a payload.
+ *
+ * Includes the current date and time, push status timestamp,
+ * cellular error, and push error.
+ *
+ * @param[in]  pPushStatus Push status data.
+ * @param[out] pPayload    Output payload buffer.
+ * @param[out] u16PayloadLen Output payload size in bytes.
+ */
+static void app_protocol_pack_push_status_payload(const Push_Status_Data_t *pPushStatus, uint8_t *pPayload, uint16_t *u16PayloadLen);
 
 /**
  * @brief Handle access level authentication.
@@ -529,6 +543,37 @@ static void app_protocol_pack_event_payload(const Event_Data_t *pEventList, uint
 
         *p++ = pEventList[i].u8EventCode;
     }
+
+    *u16PayloadLen = p - au8ProtocolBuf;
+    memmove(pPayload, au8ProtocolBuf, *u16PayloadLen);
+}
+
+static void app_protocol_pack_push_status_payload(const Push_Status_Data_t *pPushStatus, uint8_t *pPayload, uint16_t *u16PayloadLen)
+{
+    uint8_t *p = au8ProtocolBuf;
+    Date_Time_t sDateTimeSend;
+
+    sv_time_get_date_time(&sDateTimeSend);
+    memcpy(p, &sDateTimeSend, sizeof(sDateTimeSend));
+    p += sizeof(sDateTimeSend);
+
+    memcpy(p, &pPushStatus->sDateTime, sizeof(pPushStatus->sDateTime));
+    p += sizeof(pPushStatus->sDateTime);
+
+    memcpy(p, &pPushStatus->u16SessionDuration, sizeof(pPushStatus->u16SessionDuration));
+    p += sizeof(pPushStatus->u16SessionDuration);
+
+    *p++ = pPushStatus->s8Rssi;
+
+    *p++ = pPushStatus->s8Rsrp;
+
+    *p++ = pPushStatus->s8Rsrq;
+
+    *p++ = pPushStatus->s8Rssnr;
+
+    *p++ = pPushStatus->u8CellularError;
+
+    *p++ = pPushStatus->u8PushError;
 
     *u16PayloadLen = p - au8ProtocolBuf;
     memmove(pPayload, au8ProtocolBuf, *u16PayloadLen);
@@ -1766,8 +1811,8 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         app_storage_event_clear();
         break;
 
-    case CONFIG_ERASE_LOG_DATA:
-        app_storage_log_clear();
+    case CONFIG_ERASE_PUSH_STATUS_DATA:
+        app_storage_push_status_clear();
         break;
 
     case CONFIG_FACTORY_RESET:
@@ -1780,7 +1825,7 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         break;
 
     case CONFIG_PUSH_IMMEDIATELY:
-        app_cellular_push_activate();
+        app_push_immediately();
         break;
 
     case CONFIG_EVENT_CREATE:
@@ -2026,10 +2071,30 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
     }
 
     case QUERY_PUSH_STATUS:
-        break;
+    {
+        Push_Status_Data_t sPushStatusData;
+        uint16_t u16PushStatusIndex;
+        uint16_t u16TxPayloadLen;
 
-    case QUERY_LOG:
+        if (u16RxPayloadLen != sizeof(u16PushStatusIndex))
+        {
+            bFailFlag = true;
+            break;
+        }
+
+        memcpy(&u16PushStatusIndex, pRxPayload, sizeof(u16PushStatusIndex));
+
+        if (!app_storage_push_status_load_latest(u16PushStatusIndex, &sPushStatusData))
+        {
+            app_protocol_pack_ack(CMD_QUERY, u8Id, PROTOCOL_ERR_UNKNOW, pTxFrame, u16TxFrameLen);
+            return PROTOCOL_ERR_UNKNOW;
+        }
+
+        app_protocol_pack_push_status_payload(&sPushStatusData, au8TxPayload, &u16TxPayloadLen);
+        p = au8TxPayload + u16TxPayloadLen;
+
         break;
+    }
 
     case QUERY_METADATA:
     {
