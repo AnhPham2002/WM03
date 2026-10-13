@@ -40,6 +40,16 @@ typedef struct __attribute__((packed))
 } Eeprom_Header_t;
 
 /*==================================================================================================
+*                                    DEVICE ACTIVATION STATUS
+==================================================================================================*/
+
+typedef enum
+{
+    DEVICE_ACTIVATION_STATUS_DEACTIVED = 0,
+    DEVICE_ACTIVATION_STATUS_ACTIVED
+} Device_Activation_Status_t;
+
+/*==================================================================================================
 *                                      DEVICE PASSWORD
 ==================================================================================================*/
 
@@ -306,6 +316,22 @@ bool app_storage_set_module_serial(uint64_t u64Serial);
  * @return Module serial number.
  */
 uint64_t app_storage_get_module_serial(void);
+
+/**
+ * @brief Set the device activation status and save it to EEPROM.
+ *
+ * @param[in] eStatus Device activation status.
+ *
+ * @return true if the status is saved successfully, otherwise false.
+ */
+bool app_storage_set_activation_status(Device_Activation_Status_t eStatus);
+
+/**
+ * @brief Get the device activation status.
+ *
+ * @return Current device activation status.
+ */
+Device_Activation_Status_t app_storage_get_activation_status(void);
 
 /**
  * @brief Set a device password.

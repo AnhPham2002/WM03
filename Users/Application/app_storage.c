@@ -2,6 +2,7 @@
 
 static uint64_t u64ModuleSerial;
 static Device_Password_t sDevicePassword;
+static uint8_t u8DeviceActivationStatus;
 
 static Eeprom_Metadata_t sEepromMetadata;
 static Eeprom_Metadata_Area_t eNextEepromMetadataLocation = EEPROM_METADATA_AREA_1;
@@ -27,6 +28,16 @@ static Pressure_Sensor_Config_Parameter_t sPressureSensorConfig[MAX_PRESSURE_SEN
  * @brief Initialize EEPROM header.
  */
 static void app_storage_eeprom_header_init(void);
+
+/**
+ * @brief Initialize device activation status.
+ */
+static void app_storage_activation_status_init(void);
+
+/**
+ * @brief Load device activation status from EEPROM.
+ */
+static void app_storage_activation_status_load(void);
 
 /**
  * @brief Initialize EEPROM metadata.
@@ -86,16 +97,17 @@ void app_storage_init(void)
 
     if ((sEepromHeader.u32Magic != EEPROM_MAGIC_NUMBER) || (!bReadStatus))
     {
+        app_storage_activation_status_init();
         app_storage_eeprom_metadata_init();
         app_storage_eeprom_runtime_data_init();
         app_storage_config_parameter_default();
-
         app_storage_restore_default_password();
 
         app_storage_eeprom_header_init();
     }
     else
     {
+        app_storage_activation_status_load();
         app_storage_eeprom_metadata_load();
         app_storage_eeprom_runtime_data_load();
         app_storage_password_load();
@@ -174,6 +186,17 @@ bool app_storage_set_module_serial(uint64_t u64Serial)
 uint64_t app_storage_get_module_serial(void)
 {
     return u64ModuleSerial;
+}
+
+bool app_storage_set_activation_status(Device_Activation_Status_t eStatus)
+{
+    u8DeviceActivationStatus = (uint8_t)eStatus;
+    return sv_eeprom_write(EEPROM_DEVICE_ACTIVATION_STATUS_ADDRESS, &u8DeviceActivationStatus, sizeof(u8DeviceActivationStatus));
+}
+
+Device_Activation_Status_t app_storage_get_activation_status(void)
+{
+    return (Device_Activation_Status_t)u8DeviceActivationStatus;
 }
 
 bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword)
@@ -865,6 +888,17 @@ static void app_storage_eeprom_header_init(void)
     };
 
     sv_eeprom_write(EEPROM_HEADER_ADDRESS, (const uint8_t *)&sEepromHeader, sizeof(Eeprom_Header_t));
+}
+
+static void app_storage_activation_status_init(void)
+{
+    u8DeviceActivationStatus = (uint8_t)DEVICE_ACTIVATION_STATUS_DEACTIVED;
+    sv_eeprom_write(EEPROM_DEVICE_ACTIVATION_STATUS_ADDRESS, &u8DeviceActivationStatus, sizeof(u8DeviceActivationStatus));
+}
+
+static void app_storage_activation_status_load(void)
+{
+    sv_eeprom_read(EEPROM_DEVICE_ACTIVATION_STATUS_ADDRESS, &u8DeviceActivationStatus, sizeof(u8DeviceActivationStatus));
 }
 
 static void app_storage_eeprom_metadata_init(void)

@@ -658,6 +658,13 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
         break;
     }
 
+    case CONFIG_MODULE_ACTIVATION_STATUS:
+    {
+        uint8_t u8Status = (uint8_t)app_storage_get_activation_status();
+        *p++ = u8Status;
+        break;
+    }
+
     case CONFIG_TIME:
     {
         Date_Time_t sDateTime;
@@ -1070,6 +1077,21 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
         memcpy(&u64ModuleSerial, pRxPayload, sizeof(u64ModuleSerial));
         app_storage_set_module_serial(u64ModuleSerial);
+        break;
+    }
+
+    case CONFIG_MODULE_ACTIVATION_STATUS:
+    {
+        uint8_t u8Status;
+
+        if (u16RxPayloadLen != sizeof(u8Status))
+        {
+            bFailFlag = true;
+            break;
+        }
+
+        u8Status = *p;
+        app_storage_set_activation_status((Device_Activation_Status_t)u8Status);
         break;
     }
 
