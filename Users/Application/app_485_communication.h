@@ -10,3 +10,10 @@
  * and sends the response frame.
  */
 void app_485_communication_execute(void);
+
+/**
+ * @brief Check whether RS485 communication is in progress.
+ *
+ * @return true if RS485 communication is in progress, otherwise false.
+ */
+bool app_485_communication_in_progress(void);

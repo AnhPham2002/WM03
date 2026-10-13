@@ -19,3 +19,8 @@ void app_485_communication_execute(void)
         sv_485_communication_send(au8TxBuffer, u16TxBufferLen);
     }
 }
+
+bool app_485_communication_in_progress(void)
+{
+    return sv_485_communication_power_status();
+}

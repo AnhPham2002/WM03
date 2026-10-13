@@ -143,3 +143,10 @@ bool app_cellular_get_error(Cellular_Error_t *pErr);
  * @return Push session duration in seconds.
  */
 uint32_t app_cellular_get_push_session_time(void);
+
+/**
+ * @brief Check whether cellular communication is in progress.
+ *
+ * @return true if cellular communication is in progress, otherwise false.
+ */
+bool app_cellular_communication_in_progress(void);

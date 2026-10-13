@@ -1105,6 +1105,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             break;
         }
 
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+        }
+
         memcpy(&sDateTime, pRxPayload, sizeof(sDateTime));
         sv_time_set_date_time(&sDateTime);
         break;
@@ -1118,6 +1123,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         {
             bFailFlag = true;
             break;
+        }
+
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
         memcpy(&sIpEndpoint, pRxPayload, sizeof(sIpEndpoint));
@@ -1139,6 +1149,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         {
             bFailFlag = true;
             break;
+        }
+
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
         while ((uint16_t)(p - pRxPayload) < u16RxPayloadLen)
@@ -1208,6 +1223,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         {
             bFailFlag = true;
             break;
+        }
+
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
         while ((uint16_t)(p - pRxPayload) < u16RxPayloadLen)
@@ -1290,6 +1310,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         {
             bFailFlag = true;
             break;
+        }
+
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
         while ((uint16_t)(p - pRxPayload) < u16RxPayloadLen)
@@ -1424,6 +1449,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         {
             bFailFlag = true;
             break;
+        }
+
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
         while ((uint16_t)(p - pRxPayload) < u16RxPayloadLen)
@@ -1675,6 +1705,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             break;
         }
 
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+        }
+
         while ((uint16_t)(p - pRxPayload) < u16RxPayloadLen)
         {
             switch (*p++)
@@ -1781,6 +1816,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         {
             bFailFlag = 1;
             break;
+        }
+
+        if (app_storage_get_activation_status() == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+        {
+            app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
         memcpy(au8InputCurrentLevelPassword, p, PASSWORD_LENGTH);

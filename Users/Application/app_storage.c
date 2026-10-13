@@ -212,6 +212,11 @@ bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword)
     }
 
     bPasswordChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
+
     memcpy(sDevicePassword.au8Passwords[u8PasswordLevel - 1], pPassword, PASSWORD_LENGTH);
     return sv_eeprom_write(EEPROM_DEVICE_PASSWORD_ADDRESS, (const uint8_t *)&sDevicePassword, sizeof(Device_Password_t));
 }
@@ -261,6 +266,11 @@ bool app_storage_set_ip_endpoint(const Ip_Endpoint_t *pIpEndpoint)
     memcpy(&sIpEndpoint, pIpEndpoint, sizeof(Ip_Endpoint_t));
 
     bConfigChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
+
     return sv_eeprom_write(EEPROM_IP_ENDPOINT_ADDRESS, (const uint8_t *)&sIpEndpoint, sizeof(Ip_Endpoint_t));
 }
 
@@ -554,6 +564,10 @@ bool app_storage_set_pulse_meter_count(uint8_t u8MeterIndex, const Pulse_Meter_D
     }
 
     bConfigChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
 
     Pulse_Count_t sPulseCount;
     sPulseCount.u64ForwardPulseCount = (uint64_t)(pData->dTotalForward * sPulseMeterConfig[u8MeterIndex].sConfig.u16PulseFactor + 0.5);
@@ -575,6 +589,11 @@ bool app_storage_set_module_config(const Module_Config_Parameter_t *pConfig)
     }
 
     bConfigChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
+
     memcpy(&sModuleConfig, pConfig, sizeof(Module_Config_Parameter_t));
     return sv_eeprom_write(EEPROM_MODULE_CONFIG_ADDRESS, (const uint8_t *)&sModuleConfig, sizeof(sModuleConfig));
 }
@@ -598,6 +617,11 @@ bool app_storage_set_charge_config(const Charge_Config_Parameter_t *pConfig)
     }
 
     bConfigChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
+
     memcpy(&sChargeConfig, pConfig, sizeof(Charge_Config_Parameter_t));
     sv_charge_set_input_current_limit(sChargeConfig.u16IinLimMa);
     sv_charge_set_charge_voltage(sChargeConfig.u16ChargeVoltageMv);
@@ -632,6 +656,11 @@ bool app_storage_set_pulse_meter_config(uint8_t u8MeterIndex, const Pulse_Meter_
     }
 
     bConfigChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
+
     memcpy(&sPulseMeterConfig[u8MeterIndex], pConfig, sizeof(Pulse_Meter_Config_Parameter_t));
     sv_pulse_meter_set_config(u8MeterIndex, &pConfig->sConfig);
     return sv_eeprom_write(EEPROM_PULSE_METER_CONFIG_ADDRESS, (const uint8_t *)sPulseMeterConfig, sizeof(sPulseMeterConfig));
@@ -656,6 +685,11 @@ bool app_storage_set_modbus_meter_config(uint8_t u8MeterIndex, const Modbus_Mete
     }
 
     bConfigChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
+
     memcpy(&sModbusMeterConfig[u8MeterIndex], pConfig, sizeof(Modbus_Meter_Config_Parameter_t));
     return sv_eeprom_write(EEPROM_MODBUS_METER_CONFIG_ADDRESS, (const uint8_t *)sModbusMeterConfig, sizeof(sModbusMeterConfig));
 }
@@ -679,6 +713,11 @@ bool app_storage_set_pressure_sensor_config(uint8_t u8MeterIndex, const Pressure
     }
 
     bConfigChanged = true;
+    if (u8DeviceActivationStatus == DEVICE_ACTIVATION_STATUS_DEACTIVED)
+    {
+        app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
+    }
+
     memcpy(&sPressureSensorConfig[u8MeterIndex], pConfig, sizeof(Pressure_Sensor_Config_Parameter_t));
     return sv_eeprom_write(EEPROM_PRESSURE_SENSOR_CONFIG_ADDRESS, (const uint8_t *)sPressureSensorConfig, sizeof(sPressureSensorConfig));
 }

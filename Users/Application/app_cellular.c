@@ -30,11 +30,6 @@ static const char *const au8NtpServer[] = {
 
 void app_cellular_init(void)
 {
-    if (sv_time_get_date_time_update_required())
-    {
-        eCellularStep = CELLULAR_STEP_ON;
-    }
-
     sv_cellular_init();
 }
 
@@ -59,7 +54,7 @@ void app_cellular_execute(void)
     switch (eCellularStep)
     {
     case CELLULAR_STEP_IDLE:
-        if (bPushPeriodFlag)
+        if (bPushPeriodFlag || sv_time_get_date_time_update_required())
         {
             eCellularStep = CELLULAR_STEP_ON;
         }
@@ -544,4 +539,9 @@ bool app_cellular_get_error(Cellular_Error_t *pErr)
 uint32_t app_cellular_get_push_session_time(void)
 {
     return (sys_time_ms() - u32TimeStartPushSession + 500) / 1000;
+}
+
+bool app_cellular_communication_in_progress(void)
+{
+    return eCellularStep != CELLULAR_STEP_IDLE;
 }
