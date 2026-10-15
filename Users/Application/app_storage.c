@@ -128,21 +128,21 @@ void app_storage_init(void)
     // Load config data to pulse meter
     for (uint8_t i = 0; i < MAX_PULSE_METER_COUNT; i++)
     {
-        Pulse_Meter_Config_t sConfig = sPulseMeterConfig[i].sConfig;
+        Pulse_Meter_Config_t sConfig = sPulseMeterConfig[i].u8MeterEnable ? sPulseMeterConfig[i].sConfig : (Pulse_Meter_Config_t){0};
         sv_pulse_meter_set_config(i, &sConfig);
     }
 
     // Load config data to modbus meter
     for (uint8_t i = 0; i < MAX_MODBUS_METER_COUNT; i++)
     {
-        Modbus_Meter_Config_t sConfig = sModbusMeterConfig[i].sConfig;
+        Modbus_Meter_Config_t sConfig = sModbusMeterConfig[i].u8MeterEnable ? sModbusMeterConfig[i].sConfig : (Modbus_Meter_Config_t){0};
         sv_modbus_meter_set_config(i, &sConfig);
     }
 
     // Load config data to pressure sensor
     for (uint8_t i = 0; i < MAX_PRESSURE_SENSOR_COUNT; i++)
     {
-        Pressure_Sensor_Config_t sConfig = sPressureSensorConfig[i].sConfig;
+        Pressure_Sensor_Config_t sConfig = sPressureSensorConfig[i].u8MeterEnable ? sPressureSensorConfig[i].sConfig : (Pressure_Sensor_Config_t){0};
         sv_pressure_sensor_set_config(i, &sConfig);
     }
 }
@@ -662,7 +662,10 @@ bool app_storage_set_pulse_meter_config(uint8_t u8MeterIndex, const Pulse_Meter_
     }
 
     memcpy(&sPulseMeterConfig[u8MeterIndex], pConfig, sizeof(Pulse_Meter_Config_Parameter_t));
-    sv_pulse_meter_set_config(u8MeterIndex, &pConfig->sConfig);
+
+    Pulse_Meter_Config_t sConfig = pConfig->u8MeterEnable ? pConfig->sConfig : (Pulse_Meter_Config_t){0};
+    sv_pulse_meter_set_config(u8MeterIndex, &sConfig);
+
     return sv_eeprom_write(EEPROM_PULSE_METER_CONFIG_ADDRESS, (const uint8_t *)sPulseMeterConfig, sizeof(sPulseMeterConfig));
 }
 
@@ -691,6 +694,10 @@ bool app_storage_set_modbus_meter_config(uint8_t u8MeterIndex, const Modbus_Mete
     }
 
     memcpy(&sModbusMeterConfig[u8MeterIndex], pConfig, sizeof(Modbus_Meter_Config_Parameter_t));
+
+    Modbus_Meter_Config_t sConfig = pConfig->u8MeterEnable ? pConfig->sConfig : (Modbus_Meter_Config_t){0};
+    sv_modbus_meter_set_config(u8MeterIndex, &sConfig);
+
     return sv_eeprom_write(EEPROM_MODBUS_METER_CONFIG_ADDRESS, (const uint8_t *)sModbusMeterConfig, sizeof(sModbusMeterConfig));
 }
 
@@ -719,6 +726,10 @@ bool app_storage_set_pressure_sensor_config(uint8_t u8MeterIndex, const Pressure
     }
 
     memcpy(&sPressureSensorConfig[u8MeterIndex], pConfig, sizeof(Pressure_Sensor_Config_Parameter_t));
+
+    Pressure_Sensor_Config_t sConfig = pConfig->u8MeterEnable ? pConfig->sConfig : (Pressure_Sensor_Config_t){0};
+    sv_pressure_sensor_set_config(u8MeterIndex, &sConfig);
+
     return sv_eeprom_write(EEPROM_PRESSURE_SENSOR_CONFIG_ADDRESS, (const uint8_t *)sPressureSensorConfig, sizeof(sPressureSensorConfig));
 }
 
