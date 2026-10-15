@@ -11,6 +11,7 @@ void app_485_communication_execute(void)
     
     if (sv_485_communication_receive(au8RxBuffer, &u16RxBufferLen))
     {
+        u16TxBufferLen = 0;
         app_protocol_process(PROTOCOL_DATA_SOURCE_RS485, au8RxBuffer, u16RxBufferLen, au8TxBuffer, &u16TxBufferLen);
 
         sv_485_communication_init();

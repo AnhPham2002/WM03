@@ -2044,6 +2044,8 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
         uint8_t au8MeterSerial[METER_SERIAL_SIZE];
         Modbus_Meter_Data_t sModbusMeterData;
 
+        sys_delay_ms(500); // Delay to ensure separation between Modbus and communication frames
+
         app_storage_get_meter_serial(MODBUS_METER_TYPE, u8MeterIndex, au8MeterSerial);
         memcpy(p, au8MeterSerial, METER_SERIAL_SIZE);
         p += METER_SERIAL_SIZE;
@@ -2056,6 +2058,8 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
         }
         memcpy(p, &sModbusMeterData, sizeof(sModbusMeterData));
         p += sizeof(sModbusMeterData);
+
+        sys_delay_ms(500); // Delay to ensure separation between Modbus and communication frames
 
         break;
     }

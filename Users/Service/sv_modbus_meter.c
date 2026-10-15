@@ -142,6 +142,11 @@ static bool sv_modbus_meter_init(uint8_t u8MeterIndex)
         return false;
     }
 
+    if (sModbusMeterConfig[u8MeterIndex].sModbusConfig.u32BaudRate == 0)
+    {
+        return false;
+    }
+
     uint32_t u32Parity;
     switch (sModbusMeterConfig[u8MeterIndex].sModbusConfig.u8SerialConfig)
     {
