@@ -53,7 +53,17 @@ uint32_t sv_time_get_unix_timestamp(void)
     return u32Timestamp;
 }
 
- bool sv_time_get_date_time_update_required(void)
- {
+uint32_t sv_time_get_uptime_seconds(void)
+{
+    return drv_rtc_get_uptime_seconds();
+}
+
+uint32_t sv_time_get_power_on_seconds(void)
+{
+    return drv_rtc_get_power_on_seconds();
+}
+
+bool sv_time_get_date_time_update_required(void)
+{
     return drv_rtc_is_date_time_update_required();
- }
+}

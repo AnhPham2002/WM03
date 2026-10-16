@@ -1955,6 +1955,20 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
         break;
     }
 
+    case QUERY_OPERATING_TIME:
+    {
+        uint32_t u32PowerOnSecond = sv_time_get_power_on_seconds();
+        uint32_t u32UptimeSecond = sv_time_get_uptime_seconds();
+
+        memcpy(p, &u32PowerOnSecond, sizeof(u32PowerOnSecond));
+        p += sizeof(u32PowerOnSecond);
+
+        memcpy(p, &u32UptimeSecond, sizeof(u32UptimeSecond));
+        p += sizeof(u32UptimeSecond);
+
+        break;
+    }
+
     case QUERY_SIM_NETWORK_INFO:
     {
         Ccid_Info_t sCcidInfo;

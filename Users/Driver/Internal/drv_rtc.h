@@ -1,10 +1,12 @@
 #pragma once
 
-#include "drv_wdt.h"
 #include "drv_led.h"
+#include "drv_wdt.h"
 
-#include <stdint.h>
+
 #include <stdbool.h>
+#include <stdint.h>
+
 
 #define MINUTES_PER_DAY 1440
 
@@ -38,6 +40,20 @@ bool drv_rtc_set_date_time(const Date_Time_t *pDateTime);
  * @param[out] pDateTime Current date and time.
  */
 void drv_rtc_get_date_time(Date_Time_t *pDateTime);
+
+/**
+ * @brief Get the system uptime in seconds.
+ *
+ * @return System uptime in seconds.
+ */
+uint32_t drv_rtc_get_uptime_seconds(void);
+
+/**
+ * @brief Get the elapsed time since power-on in seconds.
+ *
+ * @return Elapsed time since power-on in seconds.
+ */
+uint32_t drv_rtc_get_power_on_seconds(void);
 
 /**
  * @brief Check whether the RTC date and time needs to be updated.

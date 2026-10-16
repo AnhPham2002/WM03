@@ -31,11 +31,25 @@ void sv_time_get_date_time(Date_Time_t *pDateTime);
  *
  * @return Current Unix timestamp.
  */
- uint32_t sv_time_get_unix_timestamp(void);
+uint32_t sv_time_get_unix_timestamp(void);
 
- /**
+/**
+ * @brief Get the system uptime in seconds.
+ *
+ * @return System uptime in seconds.
+ */
+uint32_t sv_time_get_uptime_seconds(void);
+
+/**
+ * @brief Get the elapsed time since power-on in seconds.
+ *
+ * @return Elapsed time since power-on in seconds.
+ */
+uint32_t sv_time_get_power_on_seconds(void);
+
+/**
  * @brief Check whether date and time needs to be updated.
  *
  * @return true if the date and time is invalid or synchronization is requested; otherwise false.
  */
- bool sv_time_get_date_time_update_required(void);
+bool sv_time_get_date_time_update_required(void);

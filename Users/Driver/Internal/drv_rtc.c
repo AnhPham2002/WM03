@@ -15,6 +15,9 @@ static volatile bool bDateTimeSyncFlag = false;
 static uint32_t u32DateTimeMagic RAM_NOINIT;
 static bool bDateTimeIsValid RAM_NOINIT;
 
+static uint32_t u32PowerOnSecond RAM_NOINIT;
+static uint32_t u32UptimeSecond = 0;
+
 /*==================================================================================================
 *                                   PUBLIC FUNCTIONS DEFINITIONS
 ==================================================================================================*/
@@ -52,7 +55,7 @@ void drv_rtc_init(void)
         Error_Handler();
     }
 
-    if (HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 1023, RTC_WAKEUPCLOCK_RTCCLK_DIV16) != HAL_OK)
+    if (HAL_RTCEx_SetWakeUpTimer_IT(&hrtc, 2047, RTC_WAKEUPCLOCK_RTCCLK_DIV16) != HAL_OK)
     {
         Error_Handler();
     }
@@ -60,6 +63,7 @@ void drv_rtc_init(void)
     if (u32DateTimeMagic != RAM_NOINIT_DATE_TIME_MAGIC_NUMBER)
     {
         bDateTimeIsValid = false;
+        u32PowerOnSecond = 0;
         u32DateTimeMagic = RAM_NOINIT_DATE_TIME_MAGIC_NUMBER;
     }
 
@@ -113,6 +117,16 @@ void drv_rtc_get_date_time(Date_Time_t *pDateTime)
     pDateTime->u8Seconds = sTime.Seconds;
 }
 
+uint32_t drv_rtc_get_uptime_seconds(void)
+{
+    return u32UptimeSecond;
+}
+
+uint32_t drv_rtc_get_power_on_seconds(void)
+{
+    return u32PowerOnSecond;
+}
+
 bool drv_rtc_is_date_time_update_required(void)
 {
     return ((!bDateTimeIsValid) || bDateTimeSyncFlag);
@@ -125,6 +139,8 @@ bool drv_rtc_is_date_time_update_required(void)
 void HAL_RTCEx_WakeUpTimerEventCallback(RTC_HandleTypeDef *hrtc)
 {
     drv_wdt_refresh();
+    u32PowerOnSecond++;
+    u32UptimeSecond++;
 }
 
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
