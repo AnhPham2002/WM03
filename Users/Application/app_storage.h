@@ -82,6 +82,8 @@ typedef struct __attribute__((packed))
     uint16_t u16EventCount;
     uint16_t u16NextPushStatusSaveIndex;
     uint16_t u16PushStatusCount;
+    uint16_t u16NextChangedInfoLogSaveIndex;
+    uint16_t u16ChangedInfoLogCount;
 } Eeprom_Metadata_t;
 
 typedef enum
@@ -91,6 +93,9 @@ typedef enum
     EEPROM_METADATA_AREA_3 = EEPROM_METADATA_AREA_2 + EEPROM_METADATA_SIZE / EEPROM_METADATA_AREA_COUNT,
     EEPROM_METADATA_AREA_4 = EEPROM_METADATA_AREA_3 + EEPROM_METADATA_SIZE / EEPROM_METADATA_AREA_COUNT,
 } Eeprom_Metadata_Area_t;
+
+#define EEPROM_METADATA_PACKET_SIZE (ALIGN4(sizeof(Eeprom_Metadata_t) + 2)) // +2 bytes CRC
+_Static_assert(EEPROM_METADATA_PACKET_SIZE <= (EEPROM_METADATA_SIZE / EEPROM_METADATA_AREA_COUNT), "EEPROM_METADATA_PACKET_SIZE exceeds EEPROM capacity");
 
 /*==================================================================================================
 *                                      EEPROM RUNTIME DATA
@@ -112,6 +117,9 @@ typedef enum
     EEPROM_RUNTIME_DATA_AREA_3 = EEPROM_RUNTIME_DATA_AREA_2 + EEPROM_RUNTIME_DATA_SIZE / EEPROM_RUNTIME_DATA_AREA_COUNT,
     EEPROM_RUNTIME_DATA_AREA_4 = EEPROM_RUNTIME_DATA_AREA_3 + EEPROM_RUNTIME_DATA_SIZE / EEPROM_RUNTIME_DATA_AREA_COUNT
 } Eeprom_Runtime_Data_Area_t;
+
+#define EEPROM_RUNTIME_DATA_PACKET_SIZE (ALIGN4(sizeof(Eeprom_Runtime_Data_t) + 2)) // +2 bytes CRC
+_Static_assert(EEPROM_RUNTIME_DATA_PACKET_SIZE <= (EEPROM_RUNTIME_DATA_SIZE / EEPROM_RUNTIME_DATA_AREA_COUNT), "EEPROM_RUNTIME_DATA_PACKET_SIZE exceeds EEPROM capacity");
 
 /*==================================================================================================
 *                                      CONFIG PARAMETER
@@ -271,6 +279,49 @@ typedef struct __attribute__((packed))
 _Static_assert(MAX_PUSH_STATUS_COUNT <= (EEPROM_PUSH_STATUS_SIZE / PUSH_STATUS_PACKET_SIZE), "MAX_PUSH_STATUS_COUNT exceeds EEPROM capacity");
 
 /*==================================================================================================
+*                                     CHANGE INFO LOG
+==================================================================================================*/
+
+typedef enum
+{
+    CHANGED_MODULE_SERIAL = 0,
+    CHANGED_ACTIVATION_STATUS,
+    CHANGED_TIME,
+    CHANGED_IP_ENDPOINT,
+    CHANGED_LATCH_PERIOD,
+    CHANGED_PUSH_PERIOD,
+    CHANGED_TIMEZONE,
+    CHANGED_CHARGE,
+    CHANGED_PULSE_METER_1,
+    CHANGED_PULSE_METER_2,
+    CHANGED_PULSE_METER_3,
+    CHANGED_PULSE_METER_4,
+    CHANGED_MODBUS_METER_1,
+    CHANGED_MODBUS_METER_2,
+    CHANGED_MODBUS_METER_3,
+    CHANGED_MODBUS_METER_4,
+    CHANGED_PRESSURE_SENSOR_1,
+    CHANGED_PRESSURE_SENSOR_2,
+    CHANGED_RESET_SETTING,
+    CHANGED_PASSWORD,
+    CHANGED_RESET_PASSWORD,
+    CHANGED_UNKNOW = 0xFF
+} Changed_Config_Id_t;
+
+typedef struct __attribute__((packed))
+{
+    Date_Time_t sDateTime;
+    uint8_t u8Source;
+    uint8_t u8Level;
+    uint8_t u8ConfigId;
+    uint64_t u64NewValue;
+} Changed_Info_Data_t;
+
+#define CHANGED_INFO_PACKET_SIZE (ALIGN4(sizeof(Changed_Info_Data_t) + 2)) // +2 bytes CRC
+#define MAX_CHANGED_INFO_COUNT 500
+_Static_assert(MAX_CHANGED_INFO_COUNT <= (EEPROM_CHANGED_INFO_LOG_SIZE / CHANGED_INFO_PACKET_SIZE), "MAX_CHANGED_INFO_COUNT exceeds EEPROM capacity");
+
+/*==================================================================================================
 *                                PUBLIC FUNCTIONS DECLARATIONS
 ==================================================================================================*/
 
@@ -379,6 +430,32 @@ bool app_storage_get_password_changed_flag(void);
  * @return true if the configuration has been changed, otherwise false.
  */
 bool app_storage_get_config_changed_flag(void);
+
+/**
+ * @brief Save changed information data to EEPROM.
+ *
+ * Saves the data to the next available log slot and updates the log metadata.
+ *
+ * @param[in] pInfo Changed information data.
+ *
+ * @return true if the data is saved successfully, otherwise false.
+ */
+bool app_storage_changed_info_log_save(const Changed_Info_Data_t *pInfo);
+
+/**
+ * @brief Load the latest changed information log from EEPROM.
+ *
+ * @param[in]  u16LogIndex Log index relative to the latest record.
+ * @param[out] pInfo       Changed information data.
+ *
+ * @return true if the data is loaded successfully, otherwise false.
+ */
+bool app_storage_changed_info_log_load_latest(uint16_t u16LogIndex, Changed_Info_Data_t *pInfo);
+
+/**
+ * @brief Clear all stored changed information logs.
+ */
+void app_storage_changed_info_log_clear(void);
 
 /**
  * @brief Set IP endpoint configuration.

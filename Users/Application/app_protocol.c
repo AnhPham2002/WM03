@@ -89,6 +89,18 @@ static void app_protocol_pack_event_payload(const Event_Data_t *pEventList, uint
 static void app_protocol_pack_push_status_payload(const Push_Status_Data_t *pPushStatus, uint8_t *pPayload, uint16_t *u16PayloadLen);
 
 /**
+ * @brief Pack changed information log data into a payload.
+ *
+ * Includes the current date and time, change timestamp, data source,
+ * configuration ID, and new value.
+ *
+ * @param[in]  pChangedInfo Changed information log data.
+ * @param[out] pPayload     Output payload buffer.
+ * @param[out] u16PayloadLen Output payload size in bytes.
+ */
+static void app_protocol_pack_changed_info_log_payload(const Changed_Info_Data_t *pChangedInfo, uint8_t *pPayload, uint16_t *u16PayloadLen);
+
+/**
  * @brief Handle access level authentication.
  *
  * Verifies the received password and updates the current access level
@@ -131,10 +143,11 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
  * @param[in]  u16RxPayloadLen Received payload size in bytes.
  * @param[out] pTxFrame        Output acknowledgment frame.
  * @param[out] u16TxFrameLen   Output frame size in bytes.
+ * @param[in]  eSource         Protocol data source.
  *
  * @return Protocol error code.
  */
-static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen);
+static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen, Protocol_Data_Source_t eSource);
 
 /**
  * @brief Handle QUERY request.
@@ -374,7 +387,7 @@ Protocol_Err_Code_t app_protocol_process(Protocol_Data_Source_t eDataSource, con
         return app_protocol_get_handler(u8Id, pRxPayload, u16RxPayloadLen, pTxFrame, u16TxFrameLen);
 
     case CMD_SET:
-        return app_protocol_set_handler(u8Id, pRxPayload, u16RxPayloadLen, pTxFrame, u16TxFrameLen);
+        return app_protocol_set_handler(u8Id, pRxPayload, u16RxPayloadLen, pTxFrame, u16TxFrameLen, eDataSource);
 
     case CMD_QUERY:
         return app_protocol_query_handler(u8Id, pRxPayload, u16RxPayloadLen, pTxFrame, u16TxFrameLen);
@@ -574,6 +587,34 @@ static void app_protocol_pack_push_status_payload(const Push_Status_Data_t *pPus
     *p++ = pPushStatus->u8CellularError;
 
     *p++ = pPushStatus->u8PushError;
+
+    *u16PayloadLen = p - au8ProtocolBuf;
+    memmove(pPayload, au8ProtocolBuf, *u16PayloadLen);
+}
+
+static void app_protocol_pack_changed_info_log_payload(const Changed_Info_Data_t *pChangedInfo, uint8_t *pPayload, uint16_t *u16PayloadLen)
+{
+    uint8_t *p = au8ProtocolBuf;
+    Date_Time_t sDateTimeSend;
+
+    sv_time_get_date_time(&sDateTimeSend);
+    memcpy(p, &sDateTimeSend, sizeof(sDateTimeSend));
+    p += sizeof(sDateTimeSend);
+
+    memcpy(p, &pChangedInfo->sDateTime, sizeof(pChangedInfo->sDateTime));
+    p += sizeof(pChangedInfo->sDateTime);
+
+    memcpy(p, &pChangedInfo->u8Source, sizeof(pChangedInfo->u8Source));
+    p += sizeof(pChangedInfo->u8Source);
+
+    memcpy(p, &pChangedInfo->u8Level, sizeof(pChangedInfo->u8Level));
+    p += sizeof(pChangedInfo->u8Level);
+
+    memcpy(p, &pChangedInfo->u8ConfigId, sizeof(pChangedInfo->u8ConfigId));
+    p += sizeof(pChangedInfo->u8ConfigId);
+
+    memcpy(p, &pChangedInfo->u64NewValue, sizeof(pChangedInfo->u64NewValue));
+    p += sizeof(pChangedInfo->u64NewValue);
 
     *u16PayloadLen = p - au8ProtocolBuf;
     memmove(pPayload, au8ProtocolBuf, *u16PayloadLen);
@@ -1058,10 +1099,15 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
     return PROTOCOL_ERR_SUCCESS;
 }
 
-static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen)
+static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen, Protocol_Data_Source_t eSource)
 {
     bool bFailFlag = false;
     const uint8_t *p = pRxPayload;
+    Changed_Info_Data_t sChangedInfo = {0};
+
+    sv_time_get_date_time(&sChangedInfo.sDateTime);
+    sChangedInfo.u8Source = (uint8_t)eSource;
+    sChangedInfo.u8Level = (uint8_t)eProtocolCurrentLevel;
 
     switch (u8Id)
     {
@@ -1076,7 +1122,16 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         }
 
         memcpy(&u64ModuleSerial, pRxPayload, sizeof(u64ModuleSerial));
-        app_storage_set_module_serial(u64ModuleSerial);
+        if (u64ModuleSerial != app_storage_get_module_serial())
+        {
+            if (app_storage_set_module_serial(u64ModuleSerial))
+            {
+                sChangedInfo.u8ConfigId = (uint8_t)CHANGED_MODULE_SERIAL;
+                sChangedInfo.u64NewValue = u64ModuleSerial;
+
+                app_storage_changed_info_log_save(&sChangedInfo);
+            }
+        }
         break;
     }
 
@@ -1091,7 +1146,17 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         }
 
         u8Status = *p;
-        app_storage_set_activation_status((Device_Activation_Status_t)u8Status);
+
+        if ((Device_Activation_Status_t)u8Status != app_storage_get_activation_status())
+        {
+            if (app_storage_set_activation_status((Device_Activation_Status_t)u8Status))
+            {
+                sChangedInfo.u8ConfigId = (uint8_t)CHANGED_ACTIVATION_STATUS;
+                sChangedInfo.u64NewValue = u8Status;
+
+                app_storage_changed_info_log_save(&sChangedInfo);
+            }
+        }
         break;
     }
 
@@ -1111,15 +1176,19 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         }
 
         memcpy(&sDateTime, pRxPayload, sizeof(sDateTime));
+        sChangedInfo.u8ConfigId = (uint8_t)CHANGED_TIME;
+        memcpy(&sChangedInfo.u64NewValue, &sDateTime, sizeof(sDateTime));
         sv_time_set_date_time(&sDateTime);
+        app_storage_changed_info_log_save(&sChangedInfo);
         break;
     }
 
     case CONFIG_IP_ENDPOINT:
     {
-        Ip_Endpoint_t sIpEndpoint;
+        Ip_Endpoint_t sCurrentIpEndpoint;
+        Ip_Endpoint_t sNewIpEndpoint;
 
-        if (u16RxPayloadLen != sizeof(sIpEndpoint))
+        if (u16RxPayloadLen != sizeof(Ip_Endpoint_t))
         {
             bFailFlag = true;
             break;
@@ -1130,13 +1199,43 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
-        memcpy(&sIpEndpoint, pRxPayload, sizeof(sIpEndpoint));
-        app_storage_set_ip_endpoint(&sIpEndpoint);
+        app_storage_get_ip_endpoint(&sCurrentIpEndpoint);
+        memcpy(&sNewIpEndpoint, pRxPayload, sizeof(Ip_Endpoint_t));
+        if (memcmp(&sCurrentIpEndpoint, &sNewIpEndpoint, sizeof(Ip_Endpoint_t)))
+        {
+            if (app_storage_set_ip_endpoint(&sNewIpEndpoint))
+            {
+                sChangedInfo.u8ConfigId = (uint8_t)CHANGED_IP_ENDPOINT;
+
+                uint8_t au8Ipv4[4] = {0};
+                uint8_t u8Index = 0;
+                uint16_t u16Port = (uint16_t)atoi((const char *)sNewIpEndpoint.au8Port);
+
+                for (const char *p = (const char *)sNewIpEndpoint.au8Ipv4; (*p != '\0') && (u8Index < 4U); p++)
+                {
+                    if ((*p >= '0') && (*p <= '9'))
+                    {
+                        au8Ipv4[u8Index] = (uint8_t)(au8Ipv4[u8Index] * 10U + (uint8_t)(*p - '0'));
+                    }
+                    else if (*p == '.')
+                    {
+                        u8Index++;
+                    }
+                }
+
+                sChangedInfo.u64NewValue = (uint64_t)au8Ipv4[0] | ((uint64_t)au8Ipv4[1] << 8) | ((uint64_t)au8Ipv4[2] << 16) | ((uint64_t)au8Ipv4[3] << 24) | ((uint64_t)u16Port << 32);
+
+                app_storage_changed_info_log_save(&sChangedInfo);
+            }
+        }
         break;
     }
 
     case CONFIG_MODULE:
     {
+        bool bChangedLatchPeriod = false;
+        bool bChangedPushPeriod = false;
+        bool bChangedTimezone = false;
         Module_Config_Parameter_t sModuleConfig;
 
         if (u16RxPayloadLen == 0)
@@ -1168,6 +1267,10 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 }
                 memcpy(&sModuleConfig.u16LatchPeriod, p, sizeof(sModuleConfig.u16LatchPeriod));
                 p += sizeof(sModuleConfig.u16LatchPeriod);
+                if (app_storage_get_latch_period() != sModuleConfig.u16LatchPeriod)
+                {
+                    bChangedLatchPeriod = true;
+                }
                 break;
 
             case CONFIG_MODULE_PUSH_PERIOD:
@@ -1178,6 +1281,10 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 }
                 memcpy(&sModuleConfig.u16PushPeriod, p, sizeof(sModuleConfig.u16PushPeriod));
                 p += sizeof(sModuleConfig.u16PushPeriod);
+                if (app_storage_get_push_period() != sModuleConfig.u16PushPeriod)
+                {
+                    bChangedPushPeriod = true;
+                }
                 break;
 
             case CONFIG_MODULE_TIMEZONE:
@@ -1188,6 +1295,10 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 }
                 memcpy(&sModuleConfig.fTimezone, p, sizeof(sModuleConfig.fTimezone));
                 p += sizeof(sModuleConfig.fTimezone);
+                if (app_storage_get_timezone() != sModuleConfig.fTimezone)
+                {
+                    bChangedTimezone = true;
+                }
                 break;
 
             default:
@@ -1203,7 +1314,29 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
         if (!bFailFlag)
         {
-            app_storage_set_module_config(&sModuleConfig);
+            if (app_storage_set_module_config(&sModuleConfig))
+            {
+                if (bChangedLatchPeriod)
+                {
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_LATCH_PERIOD;
+                    sChangedInfo.u64NewValue = sModuleConfig.u16LatchPeriod;
+                    app_storage_changed_info_log_save(&sChangedInfo);
+                }
+
+                if (bChangedPushPeriod)
+                {
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PUSH_PERIOD;
+                    sChangedInfo.u64NewValue = sModuleConfig.u16PushPeriod;
+                    app_storage_changed_info_log_save(&sChangedInfo);
+                }
+
+                if (bChangedTimezone)
+                {
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_TIMEZONE;
+                    memcpy(&sChangedInfo.u64NewValue, &sModuleConfig.fTimezone, sizeof(sModuleConfig.fTimezone));
+                    app_storage_changed_info_log_save(&sChangedInfo);
+                }
+            }
         }
 
         break;
@@ -1287,7 +1420,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
         if (!bFailFlag)
         {
-            app_storage_set_charge_config(&sChargeConfig);
+            if (app_storage_set_charge_config(&sChargeConfig))
+            {
+                sChangedInfo.u8ConfigId = (uint8_t)CHANGED_CHARGE;
+                app_storage_changed_info_log_save(&sChangedInfo);
+            }
         }
 
         break;
@@ -1297,6 +1434,7 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
     {
         Pulse_Meter_Config_Parameter_t sPulseMeterConfig;
         Pulse_Meter_Data_t sPulseMeterData;
+        uint8_t u8MeterIndex;
         bool bMeterConfig = false;
         bool bMeterData = false;
 
@@ -1306,7 +1444,8 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             break;
         }
 
-        if (!app_storage_get_pulse_meter_config(*p++, &sPulseMeterConfig))
+        u8MeterIndex = *p++;
+        if (!app_storage_get_pulse_meter_config(u8MeterIndex, &sPulseMeterConfig))
         {
             bFailFlag = true;
             break;
@@ -1422,14 +1561,53 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             }
         }
 
-        if (!bFailFlag && bMeterConfig)
+        if (!bFailFlag)
         {
-            app_storage_set_pulse_meter_config(pRxPayload[0], &sPulseMeterConfig);
-        }
+            bool bChanged = false;
 
-        if (!bFailFlag && bMeterData)
-        {
-            app_storage_set_pulse_meter_count(pRxPayload[0], &sPulseMeterData);
+            if (bMeterConfig)
+            {
+                if (app_storage_set_pulse_meter_config(u8MeterIndex, &sPulseMeterConfig))
+                {
+                    bChanged = true;
+                }
+            }
+
+            if (bMeterData)
+            {
+                if (app_storage_set_pulse_meter_count(u8MeterIndex, &sPulseMeterData))
+                {
+                    bChanged = true;
+                }
+            }
+
+            if (bChanged)
+            {
+                switch (u8MeterIndex)
+                {
+                case 0:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PULSE_METER_1;
+                    break;
+
+                case 1:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PULSE_METER_2;
+                    break;
+
+                case 2:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PULSE_METER_3;
+                    break;
+
+                case 3:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PULSE_METER_4;
+                    break;
+
+                default:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_UNKNOW;
+                    break;
+                }
+
+                app_storage_changed_info_log_save(&sChangedInfo);
+            }
         }
 
         break;
@@ -1438,6 +1616,7 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
     case CONFIG_MODBUS_METER:
     {
         Modbus_Meter_Config_Parameter_t sModbusMeterConfig;
+        uint8_t u8MeterIndex;
 
         if (u16RxPayloadLen <= 1)
         {
@@ -1445,7 +1624,8 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             break;
         }
 
-        if (!app_storage_get_modbus_meter_config(*p++, &sModbusMeterConfig))
+        u8MeterIndex = *p++;
+        if (!app_storage_get_modbus_meter_config(u8MeterIndex, &sModbusMeterConfig))
         {
             bFailFlag = true;
             break;
@@ -1683,7 +1863,33 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
         if (!bFailFlag)
         {
-            app_storage_set_modbus_meter_config(pRxPayload[0], &sModbusMeterConfig);
+            if (app_storage_set_modbus_meter_config(u8MeterIndex, &sModbusMeterConfig))
+            {
+                switch (u8MeterIndex)
+                {
+                case 0:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_MODBUS_METER_1;
+                    break;
+
+                case 1:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_MODBUS_METER_2;
+                    break;
+
+                case 2:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_MODBUS_METER_3;
+                    break;
+
+                case 3:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_MODBUS_METER_4;
+                    break;
+
+                default:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_UNKNOW;
+                    break;
+                }
+
+                app_storage_changed_info_log_save(&sChangedInfo);
+            }
         }
 
         break;
@@ -1692,6 +1898,7 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
     case CONFIG_PRESSURE_SENSOR:
     {
         Pressure_Sensor_Config_Parameter_t sPressureSensorConfig;
+        uint8_t u8MeterIndex;
 
         if (u16RxPayloadLen <= 1)
         {
@@ -1699,7 +1906,8 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             break;
         }
 
-        if (!app_storage_get_pressure_sensor_config(*p++, &sPressureSensorConfig))
+        u8MeterIndex = *p++;
+        if (!app_storage_get_pressure_sensor_config(u8MeterIndex, &sPressureSensorConfig))
         {
             bFailFlag = true;
             break;
@@ -1787,7 +1995,25 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
         if (!bFailFlag)
         {
-            app_storage_set_pressure_sensor_config(pRxPayload[0], &sPressureSensorConfig);
+            if (app_storage_set_pressure_sensor_config(u8MeterIndex, &sPressureSensorConfig))
+            {
+                switch (u8MeterIndex)
+                {
+                case 0:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PRESSURE_SENSOR_1;
+                    break;
+
+                case 1:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PRESSURE_SENSOR_2;
+                    break;
+
+                default:
+                    sChangedInfo.u8ConfigId = (uint8_t)CHANGED_UNKNOW;
+                    break;
+                }
+
+                app_storage_changed_info_log_save(&sChangedInfo);
+            }
         }
 
         break;
@@ -1803,6 +2029,8 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
     case CONFIG_RESET_SETTING:
         app_storage_config_parameter_default();
+        sChangedInfo.u8ConfigId = (uint8_t)CHANGED_RESET_SETTING;
+        app_storage_changed_info_log_save(&sChangedInfo);
         break;
 
     case CONFIG_CHANGE_PASSWORD:
@@ -1841,13 +2069,19 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
         }
 
         memcpy(au8NewPassword, p, PASSWORD_LENGTH);
-        app_storage_set_password(u8LevelNewPassword, au8NewPassword);
+        if (app_storage_set_password(u8LevelNewPassword, au8NewPassword))
+        {
+            sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PASSWORD;
+            app_storage_changed_info_log_save(&sChangedInfo);
+        }
 
         break;
     }
 
     case CONFIG_RESET_PASSWORD:
         app_storage_restore_default_password();
+        sChangedInfo.u8ConfigId = (uint8_t)CHANGED_RESET_PASSWORD;
+        app_storage_changed_info_log_save(&sChangedInfo);
         break;
 
     case CONFIG_MCU_RESET_COUNT:
@@ -1875,6 +2109,10 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
     case CONFIG_ERASE_PUSH_STATUS_DATA:
         app_storage_push_status_clear();
+        break;
+
+    case CONFIG_ERASE_CHANGE_INFO_LOG_DATA:
+        app_storage_changed_info_log_clear();
         break;
 
     case CONFIG_FACTORY_RESET:
@@ -2098,6 +2336,22 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
         break;
     }
 
+    case QUERY_METADATA:
+    {
+        Eeprom_Metadata_t sMeta;
+        Eeprom_Runtime_Data_t sRuntime;
+
+        app_storage_get_metadata_runtime(&sMeta, &sRuntime);
+
+        memcpy(p, &sMeta, sizeof(sMeta));
+        p += sizeof(sMeta);
+
+        memcpy(p, &sRuntime, sizeof(sRuntime));
+        p += sizeof(sRuntime);
+
+        break;
+    }
+
     case QUERY_LATCH:
     {
         Latch_Data_t sLatchData;
@@ -2176,18 +2430,28 @@ static Protocol_Err_Code_t app_protocol_query_handler(uint8_t u8Id, const uint8_
         break;
     }
 
-    case QUERY_METADATA:
+    case QUERY_CHANGED_INFO_LOG:
     {
-        Eeprom_Metadata_t sMeta;
-        Eeprom_Runtime_Data_t sRuntime;
+        Changed_Info_Data_t sChangedInfo;
+        uint16_t u16ChangedInfoIndex;
+        uint16_t u16TxPayloadLen;
 
-        app_storage_get_metadata_runtime(&sMeta, &sRuntime);
+        if (u16RxPayloadLen != sizeof(u16ChangedInfoIndex))
+        {
+            bFailFlag = true;
+            break;
+        }
 
-        memcpy(p, &sMeta, sizeof(sMeta));
-        p += sizeof(sMeta);
+        memcpy(&u16ChangedInfoIndex, pRxPayload, sizeof(u16ChangedInfoIndex));
 
-        memcpy(p, &sRuntime, sizeof(sRuntime));
-        p += sizeof(sRuntime);
+        if (!app_storage_changed_info_log_load_latest(u16ChangedInfoIndex, &sChangedInfo))
+        {
+            app_protocol_pack_ack(CMD_QUERY, u8Id, PROTOCOL_ERR_UNKNOW, pTxFrame, u16TxFrameLen);
+            return PROTOCOL_ERR_UNKNOW;
+        }
+
+        app_protocol_pack_changed_info_log_payload(&sChangedInfo, au8TxPayload, &u16TxPayloadLen);
+        p = au8TxPayload + u16TxPayloadLen;
 
         break;
     }

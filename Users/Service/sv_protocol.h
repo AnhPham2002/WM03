@@ -34,31 +34,31 @@ typedef enum
 #define PROTOCOL_ACCESS_TIMEOUT 300000 // ms
 
 /* ID for CMD_SET and CMD_GET: 0x01 & 0x02 */
-#define PROTOCOL_CONFIG_ID_LIST(X)           \
-    X(CONFIG_MODULE_SERIAL, 0x00)            \
-    X(CONFIG_MODULE_ACTIVATION_STATUS, 0x01) \
-    X(CONFIG_TIME, 0x02)                     \
-    X(CONFIG_IP_ENDPOINT, 0x03)              \
-    X(CONFIG_MODULE, 0x04)                   \
-    X(CONFIG_CHARGE, 0x05)                   \
-    X(CONFIG_PULSE_METER, 0x06)              \
-    X(CONFIG_MODBUS_METER, 0x07)             \
-    X(CONFIG_PRESSURE_SENSOR, 0x08)          \
-    X(CONFIG_REBOOT, 0x09)                   \
-    X(CONFIG_POWER_OFF, 0x0A)                \
-    X(CONFIG_RESET_SETTING, 0x0B)            \
-    X(CONFIG_CHANGE_PASSWORD, 0x0C)          \
-    X(CONFIG_RESET_PASSWORD, 0x10)           \
-    X(CONFIG_MCU_RESET_COUNT, 0x11)          \
-    X(CONFIG_FACTORY_RESET, 0x12)            \
-    X(CONFIG_LATCH_IMMEDIATELY, 0x13)        \
-    X(CONFIG_PUSH_IMMEDIATELY, 0x14)         \
-    X(CONFIG_EVENT_CREATE, 0x15)             \
-    X(CONFIG_ERASE_MEASUREMENT_DATA, 0x16)   \
-    X(CONFIG_ERASE_EVENT_DATA, 0x17)         \
-    X(CONFIG_ERASE_PUSH_STATUS_DATA, 0x18)   \
-    X(CONFIG_ERASE_CHANGE_CONFIG_DATA, 0x19) \
-    X(CONFIG_ERASE_MCU_RESET_DATA, 0x1A)     \
+#define PROTOCOL_CONFIG_ID_LIST(X)             \
+    X(CONFIG_MODULE_SERIAL, 0x00)              \
+    X(CONFIG_MODULE_ACTIVATION_STATUS, 0x01)   \
+    X(CONFIG_TIME, 0x02)                       \
+    X(CONFIG_IP_ENDPOINT, 0x03)                \
+    X(CONFIG_MODULE, 0x04)                     \
+    X(CONFIG_CHARGE, 0x05)                     \
+    X(CONFIG_PULSE_METER, 0x06)                \
+    X(CONFIG_MODBUS_METER, 0x07)               \
+    X(CONFIG_PRESSURE_SENSOR, 0x08)            \
+    X(CONFIG_REBOOT, 0x09)                     \
+    X(CONFIG_POWER_OFF, 0x0A)                  \
+    X(CONFIG_RESET_SETTING, 0x0B)              \
+    X(CONFIG_CHANGE_PASSWORD, 0x0C)            \
+    X(CONFIG_RESET_PASSWORD, 0x10)             \
+    X(CONFIG_MCU_RESET_COUNT, 0x11)            \
+    X(CONFIG_FACTORY_RESET, 0x12)              \
+    X(CONFIG_LATCH_IMMEDIATELY, 0x13)          \
+    X(CONFIG_PUSH_IMMEDIATELY, 0x14)           \
+    X(CONFIG_EVENT_CREATE, 0x15)               \
+    X(CONFIG_ERASE_MEASUREMENT_DATA, 0x16)     \
+    X(CONFIG_ERASE_EVENT_DATA, 0x17)           \
+    X(CONFIG_ERASE_PUSH_STATUS_DATA, 0x18)     \
+    X(CONFIG_ERASE_CHANGE_INFO_LOG_DATA, 0x19) \
+    X(CONFIG_ERASE_MCU_RESET_DATA, 0x1A)       \
     X(CONFIG_ERASE_LOG_DATA, 0x1B)
 
 typedef enum
@@ -82,7 +82,7 @@ typedef enum
     X(QUERY_LATCH, 0x09)                \
     X(QUERY_EVENT, 0x0A)                \
     X(QUERY_PUSH_STATUS, 0x0B)          \
-    X(QUERY_CHANGE_CONFIG, 0x0C)        \
+    X(QUERY_CHANGED_INFO_LOG, 0x0C)     \
     X(QUERY_MCU_RESET_LOG, 0x0D)        \
     X(QUERY_LOG, 0x0E)
 

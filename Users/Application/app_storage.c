@@ -261,6 +261,61 @@ bool app_storage_get_config_changed_flag(void)
     return false;
 }
 
+bool app_storage_changed_info_log_save(const Changed_Info_Data_t *pInfo)
+{
+    if (pInfo == NULL)
+    {
+        return false;
+    }
+
+    uint32_t u32WriteAddress = EEPROM_CHANGED_INFO_LOG_ADDRESS + (sEepromMetadata.u16NextChangedInfoLogSaveIndex * CHANGED_INFO_PACKET_SIZE);
+
+    if (!sv_eeprom_write(u32WriteAddress, (const uint8_t *)pInfo, sizeof(Changed_Info_Data_t)))
+    {
+        return false;
+    }
+
+    sEepromMetadata.u16NextChangedInfoLogSaveIndex++;
+
+    if (sEepromMetadata.u16NextChangedInfoLogSaveIndex >= MAX_CHANGED_INFO_COUNT)
+    {
+        sEepromMetadata.u16NextChangedInfoLogSaveIndex = 0;
+    }
+
+    if (sEepromMetadata.u16ChangedInfoLogCount < MAX_CHANGED_INFO_COUNT)
+    {
+        sEepromMetadata.u16ChangedInfoLogCount++;
+    }
+
+    app_storage_eeprom_metadata_save(&sEepromMetadata);
+
+    return true;
+}
+
+bool app_storage_changed_info_log_load_latest(uint16_t u16LogIndex, Changed_Info_Data_t *pInfo)
+{
+    uint16_t u16LogReadIndex;
+    uint32_t u32ReadAddress;
+
+    if ((pInfo == NULL) || (u16LogIndex >= sEepromMetadata.u16ChangedInfoLogCount))
+    {
+        return false;
+    }
+
+    u16LogReadIndex = (sEepromMetadata.u16NextChangedInfoLogSaveIndex + MAX_CHANGED_INFO_COUNT - 1U - u16LogIndex) % MAX_CHANGED_INFO_COUNT;
+
+    u32ReadAddress = EEPROM_CHANGED_INFO_LOG_ADDRESS + (u16LogReadIndex * CHANGED_INFO_PACKET_SIZE);
+
+    return sv_eeprom_read(u32ReadAddress, (uint8_t *)pInfo, sizeof(Changed_Info_Data_t));
+}
+
+void app_storage_changed_info_log_clear(void)
+{
+    sEepromMetadata.u16ChangedInfoLogCount = 0;
+
+    app_storage_eeprom_metadata_save(&sEepromMetadata);
+}
+
 bool app_storage_set_ip_endpoint(const Ip_Endpoint_t *pIpEndpoint)
 {
     memcpy(&sIpEndpoint, pIpEndpoint, sizeof(Ip_Endpoint_t));
