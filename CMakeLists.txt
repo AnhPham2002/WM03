@@ -44,6 +44,14 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+# ST Cryptographic Library
+set(CMOX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Users/Middlewares/ST/STM32_Cryptographic)
+set(CMOX_LIB ${CMOX_DIR}/lib/libSTM32Cryptographic_CM4.a)
+
+if(NOT EXISTS ${CMOX_LIB})
+    message(FATAL_ERROR "CMOX library not found: ${CMOX_LIB}")
+endif()
+
 # User source files
 file(GLOB_RECURSE USER_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/Users/*.c
@@ -93,6 +101,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     ${FIRMWARE_INCLUDE_DIRS}
+    ${CMOX_DIR}/include
 )
 
 # Add project symbols (macros)
@@ -106,6 +115,7 @@ list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
+    ${CMOX_LIB}
     # Add user defined libraries
 )
 
