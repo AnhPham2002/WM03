@@ -20,6 +20,12 @@ static Pulse_Meter_Config_Parameter_t sPulseMeterConfig[MAX_PULSE_METER_COUNT];
 static Modbus_Meter_Config_Parameter_t sModbusMeterConfig[MAX_MODBUS_METER_COUNT];
 static Pressure_Sensor_Config_Parameter_t sPressureSensorConfig[MAX_PRESSURE_SENSOR_COUNT];
 
+static const Password_Record_t sDefaultPasswordRecord[PASSWORD_COUNT] = {
+    {.au8Salt = PBKDF2_HMAC_SHA256_SALT, .au8DerivedKey = PBKDF2_HMAC_SHA256_PASSWORD1, .u32IterationCount = PBKDF2_HMAC_SHA256_ITERATION},
+    {.au8Salt = PBKDF2_HMAC_SHA256_SALT, .au8DerivedKey = PBKDF2_HMAC_SHA256_PASSWORD2, .u32IterationCount = PBKDF2_HMAC_SHA256_ITERATION},
+    {.au8Salt = PBKDF2_HMAC_SHA256_SALT, .au8DerivedKey = PBKDF2_HMAC_SHA256_PASSWORD3, .u32IterationCount = PBKDF2_HMAC_SHA256_ITERATION},
+};
+
 /*==================================================================================================
 *                                PRIVATE FUNCTIONS DECLARATIONS
 ==================================================================================================*/
@@ -1046,7 +1052,10 @@ static void app_storage_activation_status_init(void)
 
 static void app_storage_activation_status_load(void)
 {
-    sv_eeprom_read(EEPROM_DEVICE_ACTIVATION_STATUS_ADDRESS, &u8DeviceActivationStatus, sizeof(u8DeviceActivationStatus));
+    if (!sv_eeprom_read(EEPROM_DEVICE_ACTIVATION_STATUS_ADDRESS, &u8DeviceActivationStatus, sizeof(u8DeviceActivationStatus)))
+    {
+        u8DeviceActivationStatus = (uint8_t)DEVICE_ACTIVATION_STATUS_DEACTIVED;
+    }
 }
 
 static void app_storage_eeprom_metadata_init(void)
@@ -1230,23 +1239,116 @@ static void app_storage_eeprom_runtime_data_save(void)
 
 static void app_storage_module_serial_load(void)
 {
-    sv_eeprom_read(EEPROM_DEVICE_SERIAL_ADDRESS, (uint8_t *)&u64ModuleSerial, sizeof(u64ModuleSerial));
+    if (!sv_eeprom_read(EEPROM_DEVICE_SERIAL_ADDRESS, (uint8_t *)&u64ModuleSerial, sizeof(u64ModuleSerial)))
+    {
+        u64ModuleSerial = 0;
+    }
 }
 
 static void app_storage_password_record_load(void)
 {
-    for (uint8_t i = 0; i < PASSWORD_COUNT; i++)
+    for (uint8_t i = 0U; i < PASSWORD_COUNT; i++)
     {
-        sv_eeprom_read(EEPROM_DEVICE_PASSWORD_ADDRESS + i * PASSWORD_RECORD_PACKET_SIZE, (uint8_t *)&sPasswordRecord[i], sizeof(Password_Record_t));
+        Password_Record_t sPasswordRecordStorage;
+
+        bool bReadStatus = sv_eeprom_read(EEPROM_DEVICE_PASSWORD_ADDRESS + i * PASSWORD_RECORD_PACKET_SIZE, (uint8_t *)&sPasswordRecordStorage, sizeof(Password_Record_t));
+
+        if (bReadStatus)
+        {
+            memcpy(&sPasswordRecord[i], &sPasswordRecordStorage, sizeof(Password_Record_t));
+        }
+        else
+        {
+            memcpy(&sPasswordRecord[i], &sDefaultPasswordRecord[i], sizeof(Password_Record_t));
+        }
     }
 }
 
 static void app_storage_config_parameter_load(void)
 {
-    sv_eeprom_read(EEPROM_IP_ENDPOINT_ADDRESS, (uint8_t *)&sIpEndpoint, sizeof(sIpEndpoint));
-    sv_eeprom_read(EEPROM_MODULE_CONFIG_ADDRESS, (uint8_t *)&sModuleConfig, sizeof(sModuleConfig));
-    sv_eeprom_read(EEPROM_CHARGE_CONFIG_ADDRESS, (uint8_t *)&sChargeConfig, sizeof(sChargeConfig));
-    sv_eeprom_read(EEPROM_PULSE_METER_CONFIG_ADDRESS, (uint8_t *)sPulseMeterConfig, sizeof(sPulseMeterConfig));
-    sv_eeprom_read(EEPROM_MODBUS_METER_CONFIG_ADDRESS, (uint8_t *)sModbusMeterConfig, sizeof(sModbusMeterConfig));
-    sv_eeprom_read(EEPROM_PRESSURE_SENSOR_CONFIG_ADDRESS, (uint8_t *)sPressureSensorConfig, sizeof(sPressureSensorConfig));
+    if (!sv_eeprom_read(EEPROM_IP_ENDPOINT_ADDRESS, (uint8_t *)&sIpEndpoint, sizeof(sIpEndpoint)))
+    {
+        memset(&sIpEndpoint, 0, sizeof(sIpEndpoint));
+        memcpy(sIpEndpoint.au8Ipv4, IPV4_ADDRESS, strlen(IPV4_ADDRESS));
+        memcpy(sIpEndpoint.au8Port, IPV4_PORT, strlen(IPV4_PORT));
+    }
+
+    if (!sv_eeprom_read(EEPROM_MODULE_CONFIG_ADDRESS, (uint8_t *)&sModuleConfig, sizeof(sModuleConfig)))
+    {
+        sModuleConfig.u16LatchPeriod = LATCH_PERIOD;
+        sModuleConfig.u16PushPeriod = PUSH_PERIOD;
+        sModuleConfig.fTimezone = TIMEZONE;
+    }
+
+    if (!sv_eeprom_read(EEPROM_CHARGE_CONFIG_ADDRESS, (uint8_t *)&sChargeConfig, sizeof(sChargeConfig)))
+    {
+        sChargeConfig.u16IinLimMa = CHARGE_IINLIM_MA;
+        sChargeConfig.u16ChargeVoltageMv = CHARGE_VOLTAGE_MV;
+        sChargeConfig.u16ChargeCurrentMa = CHARGE_CURRENT_MA;
+        sChargeConfig.u8ChargeLedEnable = CHARGE_LED_ENABLE;
+    }
+
+    if (!sv_eeprom_read(EEPROM_PULSE_METER_CONFIG_ADDRESS, (uint8_t *)sPulseMeterConfig, sizeof(sPulseMeterConfig)))
+    {
+        for (uint8_t i = 0; i < MAX_PULSE_METER_COUNT; i++)
+        {
+            sPulseMeterConfig[i].u8MeterEnable = 0;
+
+            memset(sPulseMeterConfig[i].u8Serial, 0, sizeof(sPulseMeterConfig[i].u8Serial));
+
+            sPulseMeterConfig[i].sConfig.u16PulseFactor = PULSE_FACTOR;
+            sPulseMeterConfig[i].sConfig.sPulseConfig.u8Pin1Select = PULSE_PIN_1;
+            sPulseMeterConfig[i].sConfig.sPulseConfig.u8Pin2Select = PULSE_PIN_2;
+            sPulseMeterConfig[i].sConfig.sPulseConfig.u8EdgeType = PULSE_EDGE_TYPE;
+            sPulseMeterConfig[i].sConfig.sPulseConfig.u8PulseType = PULSE_TYPE;
+        }
+    }
+
+    if (!sv_eeprom_read(EEPROM_MODBUS_METER_CONFIG_ADDRESS, (uint8_t *)sModbusMeterConfig, sizeof(sModbusMeterConfig)))
+    {
+        for (uint8_t i = 0; i < MAX_MODBUS_METER_COUNT; i++)
+        {
+            sModbusMeterConfig[i].u8MeterEnable = 0;
+
+            memset(sModbusMeterConfig[i].u8Serial, 0, sizeof(sModbusMeterConfig[i].u8Serial));
+
+            sModbusMeterConfig[i].sConfig.sModbusConfig.u8SlaveAddress = MODBUS_SLAVE_ADDRESS;
+            sModbusMeterConfig[i].sConfig.sModbusConfig.u32BaudRate = MODBUS_BAUDRATE;
+            sModbusMeterConfig[i].sConfig.sModbusConfig.u8SerialConfig = MODBUS_SERIAL;
+            sModbusMeterConfig[i].sConfig.sModbusConfig.u8ReadFuncCode = MODBUS_READ_FUNCTION_CODE;
+
+            sModbusMeterConfig[i].sConfig.sForwardTotalizer.u8ParameterEnable = FORWARD_TOTALIZER_ENABLE;
+            sModbusMeterConfig[i].sConfig.sForwardTotalizer.u16RegisterAddress = FORWARD_TOTALIZER_ADDRESS;
+            sModbusMeterConfig[i].sConfig.sForwardTotalizer.u8DataType = FORWARD_TOTALIZER_DATA_TYPE;
+            sModbusMeterConfig[i].sConfig.sForwardTotalizer.u8WordSwap = FORWARD_TOTALIZER_WORD_SWAP;
+            sModbusMeterConfig[i].sConfig.sForwardTotalizer.s8Multiplier = FORWARD_TOTALIZER_MULTIPLIER;
+
+            sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8ParameterEnable = REVERSE_TOTALIZER_ENABLE;
+            sModbusMeterConfig[i].sConfig.sReverseTotalizer.u16RegisterAddress = REVERSE_TOTALIZER_ADDRESS;
+            sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8DataType = REVERSE_TOTALIZER_DATA_TYPE;
+            sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8WordSwap = REVERSE_TOTALIZER_WORD_SWAP;
+            sModbusMeterConfig[i].sConfig.sReverseTotalizer.s8Multiplier = REVERSE_TOTALIZER_MULTIPLIER;
+
+            sModbusMeterConfig[i].sConfig.sFlowRate.u8ParameterEnable = FLOW_RATE_ENABLE;
+            sModbusMeterConfig[i].sConfig.sFlowRate.u16RegisterAddress = FLOW_RATE_ADDRESS;
+            sModbusMeterConfig[i].sConfig.sFlowRate.u8DataType = FLOW_RATE_DATA_TYPE;
+            sModbusMeterConfig[i].sConfig.sFlowRate.u8WordSwap = FLOW_RATE_WORD_SWAP;
+            sModbusMeterConfig[i].sConfig.sFlowRate.s8Multiplier = FLOW_RATE_MULTIPLIER;
+        }
+    }
+
+    if (!sv_eeprom_read(EEPROM_PRESSURE_SENSOR_CONFIG_ADDRESS, (uint8_t *)sPressureSensorConfig, sizeof(sPressureSensorConfig)))
+    {
+        for (uint8_t i = 0; i < MAX_PRESSURE_SENSOR_COUNT; i++)
+        {
+            sPressureSensorConfig[i].u8MeterEnable = 0;
+
+            memset(sPressureSensorConfig[i].u8Serial, 0, sizeof(sPressureSensorConfig[i].u8Serial));
+
+            sPressureSensorConfig[i].sConfig.fMinCurrent = SENSOR_MIN_CURRENT;
+            sPressureSensorConfig[i].sConfig.fMaxCurrent = SENSOR_MAX_CURRENT;
+            sPressureSensorConfig[i].sConfig.fMinPressure = SENSOR_MIN_PRESSURE;
+            sPressureSensorConfig[i].sConfig.fMaxPressure = SENSOR_MAX_PRESSURE;
+        }
+    }
 }
