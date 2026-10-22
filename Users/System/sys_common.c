@@ -1,7 +1,23 @@
 #include "sys_common.h"
 #include "main.h"
+#include "rng.h"
 
+/*==================================================================================================
+*                                PRIVATE FUNCTIONS DECLARATIONS
+==================================================================================================*/
+
+/**
+ * @brief Configure the system clock.
+ *
+ * Initializes the MSI, LSI, and LSE oscillators and selects MSI as the system
+ * clock source. Configures the AHB and APB bus prescalers and enables MSI
+ * PLL mode.
+ */
 static void sys_clock_config(void);
+
+/*==================================================================================================
+*                                   PUBLIC FUNCTIONS DEFINITIONS
+==================================================================================================*/
 
 uint16_t sys_crc16(const uint8_t *pData, uint16_t u16Size)
 {
@@ -33,6 +49,36 @@ void sys_sleep(void)
     sys_clock_config();
     HAL_ResumeTick();
 }
+
+uint32_t sys_get_random_number(void)
+{
+    bool bStatus = false;
+    uint32_t u32RandomNumber;
+
+    __HAL_RCC_RNG_CLK_ENABLE();
+    if (HAL_RNG_Init(&hrng) == HAL_OK)
+    {
+        if (HAL_RNG_GenerateRandomNumber(&hrng, &u32RandomNumber) == HAL_OK)
+        {
+            bStatus = true;
+        }
+    }
+
+    if (!bStatus)
+    {
+        // u32RandomNumber = ((uint32_t)rand() << 16) | (uint32_t)rand();
+        u32RandomNumber = 0;
+    }
+
+    HAL_RNG_DeInit(&hrng);
+    __HAL_RCC_RNG_CLK_DISABLE();
+
+    return u32RandomNumber;
+}
+
+/*==================================================================================================
+*                                   PRIVATE FUNCTIONS DEFINITIONS
+==================================================================================================*/
 
 static void sys_clock_config(void)
 {
