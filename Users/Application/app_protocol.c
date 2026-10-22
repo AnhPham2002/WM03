@@ -623,12 +623,16 @@ static void app_protocol_pack_changed_info_log_payload(const Changed_Info_Data_t
 static Protocol_Err_Code_t app_protocol_access_handler(uint8_t u8Id, const uint8_t *pRxPayload, uint16_t u16RxPayloadLen, uint8_t *pTxFrame, uint16_t *u16TxFrameLen)
 {
     bool bPasswordCorrect = false;
-    static uint8_t au8Password[PASSWORD_LENGTH];
+    uint8_t u8PasswordLen;
+    uint8_t au8Password[PASSWORD_MAX_LENGTH];
+    const uint8_t *p = pRxPayload;
 
-    if (u16RxPayloadLen != PASSWORD_LENGTH)
+    u8PasswordLen = *p++;
+    memcpy(au8Password, p, u8PasswordLen);
+
+    if (app_storage_verify_password(u8Id, au8Password, u8PasswordLen))
     {
-        app_protocol_pack_ack(CMD_ACCESS, u8Id, PROTOCOL_ERR_PASSWORD_INCORRECT, pTxFrame, u16TxFrameLen);
-        return PROTOCOL_ERR_PASSWORD_INCORRECT;
+        bPasswordCorrect = true;
     }
 
     switch (u8Id)
@@ -639,29 +643,23 @@ static Protocol_Err_Code_t app_protocol_access_handler(uint8_t u8Id, const uint8
         break;
 
     case ACCESS_LV_1:
-        app_storage_get_password(ACCESS_LV_1, au8Password);
-        if (memcmp(pRxPayload, au8Password, PASSWORD_LENGTH) == 0)
+        if (bPasswordCorrect)
         {
             eProtocolCurrentLevel = ACCESS_LEVEL_1;
-            bPasswordCorrect = true;
         }
         break;
 
     case ACCESS_LV_2:
-        app_storage_get_password(ACCESS_LV_2, au8Password);
-        if (memcmp(pRxPayload, au8Password, PASSWORD_LENGTH) == 0)
+        if (bPasswordCorrect)
         {
             eProtocolCurrentLevel = ACCESS_LEVEL_2;
-            bPasswordCorrect = true;
         }
         break;
 
     case ACCESS_LV_3:
-        app_storage_get_password(ACCESS_LV_3, au8Password);
-        if (memcmp(pRxPayload, au8Password, PASSWORD_LENGTH) == 0)
+        if (bPasswordCorrect)
         {
             eProtocolCurrentLevel = ACCESS_LEVEL_3;
-            bPasswordCorrect = true;
         }
         break;
 
@@ -2035,12 +2033,13 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
 
     case CONFIG_CHANGE_PASSWORD:
     {
-        uint8_t au8InputCurrentLevelPassword[PASSWORD_LENGTH];
-        uint8_t au8StoredCurrentLevelPassword[PASSWORD_LENGTH];
-        uint8_t au8NewPassword[PASSWORD_LENGTH];
+        uint8_t au8CurrentLevelPassword[PASSWORD_MAX_LENGTH];
+        uint8_t au8NewPassword[PASSWORD_MAX_LENGTH];
+        uint8_t u8CurrentLevelPasswordLen;
         uint8_t u8LevelNewPassword;
+        uint8_t u8NewPasswordLen;
 
-        if (u16RxPayloadLen != 2 * PASSWORD_LENGTH + 1) // Current Password + 1 byte level + New password
+        if ((u16RxPayloadLen < PASSWORD_MIN_LENGTH * 2 + 3) || (u16RxPayloadLen > PASSWORD_MAX_LENGTH * 2 + 3)) // Current Length + Current Password + Level New Password + New Length + New password
         {
             bFailFlag = 1;
             break;
@@ -2051,25 +2050,25 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
         }
 
-        memcpy(au8InputCurrentLevelPassword, p, PASSWORD_LENGTH);
-        p += PASSWORD_LENGTH;
-        app_storage_get_password(eProtocolCurrentLevel, au8StoredCurrentLevelPassword);
-        if (memcmp(au8InputCurrentLevelPassword, au8StoredCurrentLevelPassword, PASSWORD_LENGTH) != 0)
+        u8CurrentLevelPasswordLen = *p++;
+        memcpy(au8CurrentLevelPassword, p, u8CurrentLevelPasswordLen);
+        p += u8CurrentLevelPasswordLen;
+        if (!app_storage_verify_password((uint8_t)eProtocolCurrentLevel, au8CurrentLevelPassword, u8CurrentLevelPasswordLen))
         {
             app_protocol_pack_ack(CMD_SET, u8Id, PROTOCOL_ERR_PASSWORD_INCORRECT, pTxFrame, u16TxFrameLen);
             return PROTOCOL_ERR_PASSWORD_INCORRECT;
         }
 
         u8LevelNewPassword = *p++;
-
         if (u8LevelNewPassword > eProtocolCurrentLevel)
         {
             app_protocol_pack_ack(CMD_SET, u8Id, PROTOCOL_ERR_ACCESS_DENIED, pTxFrame, u16TxFrameLen);
             return PROTOCOL_ERR_ACCESS_DENIED;
         }
 
-        memcpy(au8NewPassword, p, PASSWORD_LENGTH);
-        if (app_storage_set_password(u8LevelNewPassword, au8NewPassword))
+        u8NewPasswordLen = *p++;
+        memcpy(au8NewPassword, p, u8NewPasswordLen);
+        if (app_storage_set_password(u8LevelNewPassword, au8NewPassword, u8NewPasswordLen))
         {
             sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PASSWORD;
             app_storage_changed_info_log_save(&sChangedInfo);

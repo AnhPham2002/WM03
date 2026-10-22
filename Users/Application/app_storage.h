@@ -12,6 +12,8 @@
 #include "sv_pressure_sensor.h"
 #include "sv_pulse_meter.h"
 
+#include "pbkdf2_hmac_sha256.h"
+
 #define FIRMWARE_VERSION "V1.0.1"
 
 #define VERSION_SIZE 10 // "Vxx.xx.xxx"
@@ -54,16 +56,33 @@ typedef enum
 ==================================================================================================*/
 
 #define PASSWORD_COUNT 3
-#define PASSWORD_LENGTH 8
+#define PASSWORD_MIN_LENGTH 4
+#define PASSWORD_MAX_LENGTH 32
 
-#define PASSWORD_DEFAULT_1 "11111111"
-#define PASSWORD_DEFAULT_2 "22222222"
-#define PASSWORD_DEFAULT_3 "33333333"
+#define PBKDF2_HMAC_SHA256_SALT_SIZE 16
+#define PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE 32
+
+#define PBKDF2_HMAC_SHA256_ITERATION 50
+#define PBKDF2_HMAC_SHA256_SALT {0x4F, 0x9D, 0x81, 0xE2, 0xA5, 0x7B, 0x30, 0x1C, 0x8E, 0x6F, 0x2A, 0x4D, 0x93, 0x15, 0xB8, 0x0C}
+#define PBKDF2_HMAC_SHA256_PASSWORD1                                                                                                                                                                 \
+    {0x5D, 0x1F, 0xC4, 0xE4, 0xE4, 0x45, 0x7A, 0x14, 0x35, 0xE7, 0x8F, 0xBB, 0x04, 0xE0, 0x3F, 0xD4, 0xF1, 0x8E, 0xA9, 0xE3, 0xEE, 0x95, 0x4E, 0x09, 0xE7, 0x35, 0xE8, 0xC9, 0x21, 0x2A, 0xCB, 0x04} \
+    // Password: "11111111"
+#define PBKDF2_HMAC_SHA256_PASSWORD2                                                                                                                                                                 \
+    {0x07, 0x12, 0xD5, 0x3E, 0x40, 0xFA, 0xE2, 0xC5, 0x45, 0x67, 0x7B, 0xB3, 0xDA, 0xB0, 0xDB, 0x0B, 0x68, 0xEC, 0x73, 0x0C, 0xF9, 0xD6, 0xA9, 0x36, 0xC7, 0xC9, 0xC1, 0x8B, 0xEE, 0xCC, 0xC9, 0x18} \
+    // Password: "22222222"
+#define PBKDF2_HMAC_SHA256_PASSWORD3                                                                                                                                                                 \
+    {0x11, 0xC9, 0xE1, 0x94, 0x0E, 0xA3, 0x69, 0x08, 0x89, 0x19, 0x3D, 0x97, 0x96, 0x73, 0x36, 0x6E, 0x04, 0x68, 0xA2, 0x6F, 0xF3, 0xF7, 0x0F, 0xCD, 0xEA, 0x84, 0xEF, 0x27, 0xB2, 0x05, 0x1C, 0x70} \
+    // Password: "33333333"
 
 typedef struct __attribute__((packed))
 {
-    uint8_t au8Passwords[PASSWORD_COUNT][PASSWORD_LENGTH];
-} Device_Password_t;
+    uint8_t au8Salt[PBKDF2_HMAC_SHA256_SALT_SIZE];
+    uint8_t au8DerivedKey[PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE];
+    uint32_t u32IterationCount;
+} Password_Record_t;
+
+#define PASSWORD_RECORD_PACKET_SIZE (ALIGN4(sizeof(Password_Record_t) + 2)) // +2 bytes CRC
+_Static_assert(PASSWORD_RECORD_PACKET_SIZE <= (EEPROM_DEVICE_PASSWORD_SIZE / PASSWORD_COUNT), "PASSWORD_RECORD_PACKET_SIZE exceeds EEPROM capacity");
 
 /*==================================================================================================
 *                                      EEPROM METADATA
@@ -385,31 +404,40 @@ bool app_storage_set_activation_status(Device_Activation_Status_t eStatus);
 Device_Activation_Status_t app_storage_get_activation_status(void);
 
 /**
- * @brief Set a device password.
+ * @brief Set a password and save its derived key to EEPROM.
  *
- * @param[in]  u8PasswordLevel Password level.
- * @param[out] pPassword       Password buffer.
+ * Rejects the operation if the supplied password matches the current password.
+ * Activates the device if it is currently deactivated.
  *
- * @return true if the password is retrieved successfully, otherwise false.
+ * @param[in] u8PasswordLevel Password level to update, starting from 1.
+ * @param[in] pPassword       New password.
+ * @param[in] u8PasswordLen   New password length in bytes.
+ *
+ * @return true if the password record is saved successfully, otherwise false.
  */
-bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword);
+bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword, uint8_t u8PasswordLen);
 
 /**
- * @brief Get a device password.
+ * @brief Verify a password against the stored derived key.
  *
- * @param[in]  u8PasswordLevel Password level.
- * @param[out] pPassword       Password buffer.
+ * Derives a key from the supplied password using the stored salt and PBKDF2
+ * iteration count, then compares it with the stored derived key.
  *
- * @return true if the password is retrieved successfully, otherwise false.
+ * @param[in] u8PasswordLevel Password level to verify, starting from 1.
+ * @param[in] pPassword       Input password.
+ * @param[in] u8PasswordLen   Input password length in bytes.
+ *
+ * @return true if the password is valid, otherwise false.
  */
-bool app_storage_get_password(uint8_t u8PasswordLevel, uint8_t *pPassword);
+bool app_storage_verify_password(uint8_t u8PasswordLevel, const uint8_t *pPassword, uint8_t u8PasswordLen);
 
 /**
- * @brief Restore default device passwords.
+ * @brief Restore default password records and save them to EEPROM.
  *
- * Restores all device passwords to their default values and saves them to EEPROM.
+ * Initializes all password records with the default derived keys, salt,
+ * and PBKDF2 iteration count.
  *
- * @return true if the passwords are saved successfully, otherwise false.
+ * @return true if all password records are saved successfully, otherwise false.
  */
 bool app_storage_restore_default_password(void);
 

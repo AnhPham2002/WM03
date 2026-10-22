@@ -1,7 +1,7 @@
 #include "app_storage.h"
 
 static uint64_t u64ModuleSerial;
-static Device_Password_t sDevicePassword;
+static Password_Record_t sPasswordRecord[PASSWORD_COUNT];
 static uint8_t u8DeviceActivationStatus;
 
 static Eeprom_Metadata_t sEepromMetadata;
@@ -75,9 +75,11 @@ static void app_storage_eeprom_runtime_data_save(void);
 static void app_storage_module_serial_load(void);
 
 /**
- * @brief Load password from EEPROM.
+ * @brief Load password records from EEPROM.
+ *
+ * Reads all password records from EEPROM into memory.
  */
-static void app_storage_password_load(void);
+static void app_storage_password_record_load(void);
 
 /**
  * @brief Load configuration parameters.
@@ -110,7 +112,7 @@ void app_storage_init(void)
         app_storage_activation_status_load();
         app_storage_eeprom_metadata_load();
         app_storage_eeprom_runtime_data_load();
-        app_storage_password_load();
+        app_storage_password_record_load();
         app_storage_config_parameter_load();
     }
 
@@ -199,14 +201,14 @@ Device_Activation_Status_t app_storage_get_activation_status(void)
     return (Device_Activation_Status_t)u8DeviceActivationStatus;
 }
 
-bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword)
+bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword, uint8_t u8PasswordLen)
 {
-    if ((u8PasswordLevel > PASSWORD_COUNT) || (u8PasswordLevel == 0) || (pPassword == NULL))
+    if ((u8PasswordLevel > PASSWORD_COUNT) || (u8PasswordLevel == 0) || (pPassword == NULL) || (u8PasswordLen < PASSWORD_MIN_LENGTH) || (u8PasswordLevel > PASSWORD_MAX_LENGTH))
     {
         return false;
     }
 
-    if (memcmp(sDevicePassword.au8Passwords[u8PasswordLevel - 1], pPassword, PASSWORD_LENGTH) == 0)
+    if (app_storage_verify_password(u8PasswordLevel, pPassword, u8PasswordLen))
     {
         return false;
     }
@@ -217,28 +219,69 @@ bool app_storage_set_password(uint8_t u8PasswordLevel, const uint8_t *pPassword)
         app_storage_set_activation_status(DEVICE_ACTIVATION_STATUS_ACTIVED);
     }
 
-    memcpy(sDevicePassword.au8Passwords[u8PasswordLevel - 1], pPassword, PASSWORD_LENGTH);
-    return sv_eeprom_write(EEPROM_DEVICE_PASSWORD_ADDRESS, (const uint8_t *)&sDevicePassword, sizeof(Device_Password_t));
+    uint8_t au8Salt[sizeof(((Password_Record_t *)0)->au8Salt)];
+    uint32_t u32RandomVal;
+    for (uint8_t i = 0; i < sizeof(au8Salt); i += sizeof(u32RandomVal))
+    {
+        u32RandomVal = sys_get_random_number();
+        uint8_t u8CopyLen = (sizeof(au8Salt) - i >= sizeof(u32RandomVal)) ? sizeof(u32RandomVal) : (sizeof(au8Salt) - i);
+        memcpy(&au8Salt[i], &u32RandomVal, u8CopyLen);
+    }
+
+    memcpy(sPasswordRecord[u8PasswordLevel - 1].au8Salt, au8Salt, sizeof(au8Salt));
+
+    pbkdf2_hmac_sha256(pPassword, u8PasswordLen, sPasswordRecord[u8PasswordLevel - 1].au8Salt, sizeof(au8Salt), sPasswordRecord[u8PasswordLevel - 1].u32IterationCount,
+                       sPasswordRecord[u8PasswordLevel - 1].au8DerivedKey, sizeof(sPasswordRecord[u8PasswordLevel - 1].au8DerivedKey));
+    return sv_eeprom_write(EEPROM_DEVICE_PASSWORD_ADDRESS + (u8PasswordLevel - 1) * PASSWORD_RECORD_PACKET_SIZE, (const uint8_t *)&sPasswordRecord[u8PasswordLevel - 1], sizeof(Password_Record_t));
 }
 
-bool app_storage_get_password(uint8_t u8PasswordLevel, uint8_t *pPassword)
+bool app_storage_verify_password(uint8_t u8PasswordLevel, const uint8_t *pPassword, uint8_t u8PasswordLen)
 {
-    if ((u8PasswordLevel > PASSWORD_COUNT) || (u8PasswordLevel == 0) || (pPassword == NULL))
+    if ((u8PasswordLevel > PASSWORD_COUNT) || (u8PasswordLevel == 0) || (pPassword == NULL) || (u8PasswordLen < PASSWORD_MIN_LENGTH) || (u8PasswordLevel > PASSWORD_MAX_LENGTH))
     {
         return false;
     }
 
-    memcpy(pPassword, sDevicePassword.au8Passwords[u8PasswordLevel - 1], PASSWORD_LENGTH);
-    return true;
+    uint8_t au8DerivedKey[sizeof(((Password_Record_t *)0)->au8DerivedKey)];
+    pbkdf2_hmac_sha256(pPassword, u8PasswordLen, sPasswordRecord[u8PasswordLevel - 1].au8Salt, sizeof(sPasswordRecord[u8PasswordLevel - 1].au8Salt),
+                       sPasswordRecord[u8PasswordLevel - 1].u32IterationCount, au8DerivedKey, sizeof(au8DerivedKey));
+
+    if (memcmp(sPasswordRecord[u8PasswordLevel - 1].au8DerivedKey, au8DerivedKey, sizeof(au8DerivedKey)) == 0)
+    {
+        return true;
+    }
+
+    return false;
 }
 
 bool app_storage_restore_default_password(void)
 {
-    memcpy(sDevicePassword.au8Passwords[0], PASSWORD_DEFAULT_1, PASSWORD_LENGTH);
-    memcpy(sDevicePassword.au8Passwords[1], PASSWORD_DEFAULT_2, PASSWORD_LENGTH);
-    memcpy(sDevicePassword.au8Passwords[2], PASSWORD_DEFAULT_3, PASSWORD_LENGTH);
+    uint8_t au8Salt[PBKDF2_HMAC_SHA256_SALT_SIZE] = PBKDF2_HMAC_SHA256_SALT;
+    uint8_t au8DerivedKey1[PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE] = PBKDF2_HMAC_SHA256_PASSWORD1;
+    uint8_t au8DerivedKey2[PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE] = PBKDF2_HMAC_SHA256_PASSWORD2;
+    uint8_t au8DerivedKey3[PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE] = PBKDF2_HMAC_SHA256_PASSWORD3;
 
-    return sv_eeprom_write(EEPROM_DEVICE_PASSWORD_ADDRESS, (const uint8_t *)&sDevicePassword, sizeof(Device_Password_t));
+    memcpy(sPasswordRecord[0].au8Salt, au8Salt, PBKDF2_HMAC_SHA256_SALT_SIZE);
+    memcpy(sPasswordRecord[0].au8DerivedKey, au8DerivedKey1, PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE);
+    sPasswordRecord[0].u32IterationCount = PBKDF2_HMAC_SHA256_ITERATION;
+
+    memcpy(sPasswordRecord[1].au8Salt, au8Salt, PBKDF2_HMAC_SHA256_SALT_SIZE);
+    memcpy(sPasswordRecord[1].au8DerivedKey, au8DerivedKey2, PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE);
+    sPasswordRecord[1].u32IterationCount = PBKDF2_HMAC_SHA256_ITERATION;
+
+    memcpy(sPasswordRecord[2].au8Salt, au8Salt, PBKDF2_HMAC_SHA256_SALT_SIZE);
+    memcpy(sPasswordRecord[2].au8DerivedKey, au8DerivedKey3, PBKDF2_HMAC_SHA256_DERIVED_KEY_SIZE);
+    sPasswordRecord[2].u32IterationCount = PBKDF2_HMAC_SHA256_ITERATION;
+
+    for (uint8_t i = 0; i < PASSWORD_COUNT; i++)
+    {
+        if (!sv_eeprom_write(EEPROM_DEVICE_PASSWORD_ADDRESS + i * PASSWORD_RECORD_PACKET_SIZE, (const uint8_t *)&sPasswordRecord[i], sizeof(Password_Record_t)))
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool app_storage_get_password_changed_flag(void)
@@ -1190,9 +1233,12 @@ static void app_storage_module_serial_load(void)
     sv_eeprom_read(EEPROM_DEVICE_SERIAL_ADDRESS, (uint8_t *)&u64ModuleSerial, sizeof(u64ModuleSerial));
 }
 
-static void app_storage_password_load(void)
+static void app_storage_password_record_load(void)
 {
-    sv_eeprom_read(EEPROM_DEVICE_PASSWORD_ADDRESS, (uint8_t *)&sDevicePassword, sizeof(sDevicePassword));
+    for (uint8_t i = 0; i < PASSWORD_COUNT; i++)
+    {
+        sv_eeprom_read(EEPROM_DEVICE_PASSWORD_ADDRESS + i * PASSWORD_RECORD_PACKET_SIZE, (uint8_t *)&sPasswordRecord[i], sizeof(Password_Record_t));
+    }
 }
 
 static void app_storage_config_parameter_load(void)
