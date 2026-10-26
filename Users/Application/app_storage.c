@@ -895,19 +895,19 @@ void app_storage_config_parameter_default(void)
         sModbusMeterConfig[i].sConfig.sForwardTotalizer.u16RegisterAddress = FORWARD_TOTALIZER_ADDRESS;
         sModbusMeterConfig[i].sConfig.sForwardTotalizer.u8DataType = FORWARD_TOTALIZER_DATA_TYPE;
         sModbusMeterConfig[i].sConfig.sForwardTotalizer.u8WordSwap = FORWARD_TOTALIZER_WORD_SWAP;
-        sModbusMeterConfig[i].sConfig.sForwardTotalizer.s8Multiplier = FORWARD_TOTALIZER_MULTIPLIER;
+        sModbusMeterConfig[i].sConfig.sForwardTotalizer.s8ScaleFactorExponent = FORWARD_TOTALIZER_EXPONENT;
 
         sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8ParameterEnable = REVERSE_TOTALIZER_ENABLE;
         sModbusMeterConfig[i].sConfig.sReverseTotalizer.u16RegisterAddress = REVERSE_TOTALIZER_ADDRESS;
         sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8DataType = REVERSE_TOTALIZER_DATA_TYPE;
         sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8WordSwap = REVERSE_TOTALIZER_WORD_SWAP;
-        sModbusMeterConfig[i].sConfig.sReverseTotalizer.s8Multiplier = REVERSE_TOTALIZER_MULTIPLIER;
+        sModbusMeterConfig[i].sConfig.sReverseTotalizer.s8ScaleFactorExponent = REVERSE_TOTALIZER_EXPONENT;
 
         sModbusMeterConfig[i].sConfig.sFlowRate.u8ParameterEnable = FLOW_RATE_ENABLE;
         sModbusMeterConfig[i].sConfig.sFlowRate.u16RegisterAddress = FLOW_RATE_ADDRESS;
         sModbusMeterConfig[i].sConfig.sFlowRate.u8DataType = FLOW_RATE_DATA_TYPE;
         sModbusMeterConfig[i].sConfig.sFlowRate.u8WordSwap = FLOW_RATE_WORD_SWAP;
-        sModbusMeterConfig[i].sConfig.sFlowRate.s8Multiplier = FLOW_RATE_MULTIPLIER;
+        sModbusMeterConfig[i].sConfig.sFlowRate.s8ScaleFactorExponent = FLOW_RATE_EXPONENT;
     }
     sv_eeprom_write(EEPROM_MODBUS_METER_CONFIG_ADDRESS, (const uint8_t *)sModbusMeterConfig, sizeof(sModbusMeterConfig));
 
@@ -1321,19 +1321,19 @@ static void app_storage_config_parameter_load(void)
             sModbusMeterConfig[i].sConfig.sForwardTotalizer.u16RegisterAddress = FORWARD_TOTALIZER_ADDRESS;
             sModbusMeterConfig[i].sConfig.sForwardTotalizer.u8DataType = FORWARD_TOTALIZER_DATA_TYPE;
             sModbusMeterConfig[i].sConfig.sForwardTotalizer.u8WordSwap = FORWARD_TOTALIZER_WORD_SWAP;
-            sModbusMeterConfig[i].sConfig.sForwardTotalizer.s8Multiplier = FORWARD_TOTALIZER_MULTIPLIER;
+            sModbusMeterConfig[i].sConfig.sForwardTotalizer.s8ScaleFactorExponent = FORWARD_TOTALIZER_EXPONENT;
 
             sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8ParameterEnable = REVERSE_TOTALIZER_ENABLE;
             sModbusMeterConfig[i].sConfig.sReverseTotalizer.u16RegisterAddress = REVERSE_TOTALIZER_ADDRESS;
             sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8DataType = REVERSE_TOTALIZER_DATA_TYPE;
             sModbusMeterConfig[i].sConfig.sReverseTotalizer.u8WordSwap = REVERSE_TOTALIZER_WORD_SWAP;
-            sModbusMeterConfig[i].sConfig.sReverseTotalizer.s8Multiplier = REVERSE_TOTALIZER_MULTIPLIER;
+            sModbusMeterConfig[i].sConfig.sReverseTotalizer.s8ScaleFactorExponent = REVERSE_TOTALIZER_EXPONENT;
 
             sModbusMeterConfig[i].sConfig.sFlowRate.u8ParameterEnable = FLOW_RATE_ENABLE;
             sModbusMeterConfig[i].sConfig.sFlowRate.u16RegisterAddress = FLOW_RATE_ADDRESS;
             sModbusMeterConfig[i].sConfig.sFlowRate.u8DataType = FLOW_RATE_DATA_TYPE;
             sModbusMeterConfig[i].sConfig.sFlowRate.u8WordSwap = FLOW_RATE_WORD_SWAP;
-            sModbusMeterConfig[i].sConfig.sFlowRate.s8Multiplier = FLOW_RATE_MULTIPLIER;
+            sModbusMeterConfig[i].sConfig.sFlowRate.s8ScaleFactorExponent = FLOW_RATE_EXPONENT;
         }
     }
 

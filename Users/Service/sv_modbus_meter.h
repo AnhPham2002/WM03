@@ -47,7 +47,7 @@ typedef struct __attribute__((packed))
     uint16_t u16RegisterAddress;
     uint8_t u8DataType;
     uint8_t u8WordSwap;
-    int8_t s8Multiplier;
+    int8_t s8ScaleFactorExponent;
 } Modbus_Parameter_t;
 
 /**

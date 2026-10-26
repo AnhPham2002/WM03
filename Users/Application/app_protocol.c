@@ -949,9 +949,9 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.u8WordSwap);
                 break;
 
-            case CONFIG_MODBUS_METER_FORWARD_TOTAL_MULTIPLIER:
-                memcpy(p, &sModbusMeterConfig.sConfig.sForwardTotalizer.s8Multiplier, sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8Multiplier));
-                p += sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8Multiplier);
+            case CONFIG_MODBUS_METER_FORWARD_TOTAL_EXPONENT:
+                memcpy(p, &sModbusMeterConfig.sConfig.sForwardTotalizer.s8ScaleFactorExponent, sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8ScaleFactorExponent));
+                p += sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8ScaleFactorExponent);
                 break;
 
             case CONFIG_MODBUS_METER_REVERSE_TOTAL_ENABLE:
@@ -974,9 +974,9 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.u8WordSwap);
                 break;
 
-            case CONFIG_MODBUS_METER_REVERSE_TOTAL_MULTIPLIER:
-                memcpy(p, &sModbusMeterConfig.sConfig.sReverseTotalizer.s8Multiplier, sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8Multiplier));
-                p += sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8Multiplier);
+            case CONFIG_MODBUS_METER_REVERSE_TOTAL_EXPONENT:
+                memcpy(p, &sModbusMeterConfig.sConfig.sReverseTotalizer.s8ScaleFactorExponent, sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8ScaleFactorExponent));
+                p += sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8ScaleFactorExponent);
                 break;
 
             case CONFIG_MODBUS_METER_FLOW_RATE_ENABLE:
@@ -984,24 +984,24 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8ParameterEnable);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_REG_ADDR:
+            case CONFIG_MODBUS_METER_FLOW_RATE_REG_ADDR:
                 memcpy(p, &sModbusMeterConfig.sConfig.sFlowRate.u16RegisterAddress, sizeof(sModbusMeterConfig.sConfig.sFlowRate.u16RegisterAddress));
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u16RegisterAddress);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_DATA_TYPE:
+            case CONFIG_MODBUS_METER_FLOW_RATE_DATA_TYPE:
                 memcpy(p, &sModbusMeterConfig.sConfig.sFlowRate.u8DataType, sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8DataType));
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8DataType);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_WORD_SWAP:
+            case CONFIG_MODBUS_METER_FLOW_RATE_WORD_SWAP:
                 memcpy(p, &sModbusMeterConfig.sConfig.sFlowRate.u8WordSwap, sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8WordSwap));
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8WordSwap);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_MULTIPLIER:
-                memcpy(p, &sModbusMeterConfig.sConfig.sFlowRate.s8Multiplier, sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8Multiplier));
-                p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8Multiplier);
+            case CONFIG_MODBUS_METER_FLOW_RATE_EXPONENT:
+                memcpy(p, &sModbusMeterConfig.sConfig.sFlowRate.s8ScaleFactorExponent, sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8ScaleFactorExponent));
+                p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8ScaleFactorExponent);
                 break;
 
             default:
@@ -1738,14 +1738,14 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.u8WordSwap);
                 break;
 
-            case CONFIG_MODBUS_METER_FORWARD_TOTAL_MULTIPLIER:
-                if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8Multiplier) > u16RxPayloadLen)
+            case CONFIG_MODBUS_METER_FORWARD_TOTAL_EXPONENT:
+                if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8ScaleFactorExponent) > u16RxPayloadLen)
                 {
                     bFailFlag = true;
                     break;
                 }
-                memcpy(&sModbusMeterConfig.sConfig.sForwardTotalizer.s8Multiplier, p, sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8Multiplier));
-                p += sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8Multiplier);
+                memcpy(&sModbusMeterConfig.sConfig.sForwardTotalizer.s8ScaleFactorExponent, p, sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8ScaleFactorExponent));
+                p += sizeof(sModbusMeterConfig.sConfig.sForwardTotalizer.s8ScaleFactorExponent);
                 break;
 
             case CONFIG_MODBUS_METER_REVERSE_TOTAL_ENABLE:
@@ -1788,14 +1788,14 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.u8WordSwap);
                 break;
 
-            case CONFIG_MODBUS_METER_REVERSE_TOTAL_MULTIPLIER:
-                if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8Multiplier) > u16RxPayloadLen)
+            case CONFIG_MODBUS_METER_REVERSE_TOTAL_EXPONENT:
+                if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8ScaleFactorExponent) > u16RxPayloadLen)
                 {
                     bFailFlag = true;
                     break;
                 }
-                memcpy(&sModbusMeterConfig.sConfig.sReverseTotalizer.s8Multiplier, p, sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8Multiplier));
-                p += sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8Multiplier);
+                memcpy(&sModbusMeterConfig.sConfig.sReverseTotalizer.s8ScaleFactorExponent, p, sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8ScaleFactorExponent));
+                p += sizeof(sModbusMeterConfig.sConfig.sReverseTotalizer.s8ScaleFactorExponent);
                 break;
 
             case CONFIG_MODBUS_METER_FLOW_RATE_ENABLE:
@@ -1808,7 +1808,7 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8ParameterEnable);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_REG_ADDR:
+            case CONFIG_MODBUS_METER_FLOW_RATE_REG_ADDR:
                 if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sFlowRate.u16RegisterAddress) > u16RxPayloadLen)
                 {
                     bFailFlag = true;
@@ -1818,7 +1818,7 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u16RegisterAddress);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_DATA_TYPE:
+            case CONFIG_MODBUS_METER_FLOW_RATE_DATA_TYPE:
                 if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8DataType) > u16RxPayloadLen)
                 {
                     bFailFlag = true;
@@ -1828,7 +1828,7 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8DataType);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_WORD_SWAP:
+            case CONFIG_MODBUS_METER_FLOW_RATE_WORD_SWAP:
                 if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8WordSwap) > u16RxPayloadLen)
                 {
                     bFailFlag = true;
@@ -1838,14 +1838,14 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
                 p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.u8WordSwap);
                 break;
 
-            case CONFIG_MODBUS_METER_FLOW_RATE_TOTAL_MULTIPLIER:
-                if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8Multiplier) > u16RxPayloadLen)
+            case CONFIG_MODBUS_METER_FLOW_RATE_EXPONENT:
+                if ((uint16_t)(p - pRxPayload) + sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8ScaleFactorExponent) > u16RxPayloadLen)
                 {
                     bFailFlag = true;
                     break;
                 }
-                memcpy(&sModbusMeterConfig.sConfig.sFlowRate.s8Multiplier, p, sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8Multiplier));
-                p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8Multiplier);
+                memcpy(&sModbusMeterConfig.sConfig.sFlowRate.s8ScaleFactorExponent, p, sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8ScaleFactorExponent));
+                p += sizeof(sModbusMeterConfig.sConfig.sFlowRate.s8ScaleFactorExponent);
                 break;
 
             default:

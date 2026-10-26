@@ -27,15 +27,15 @@ static uint8_t sv_modbus_meter_data_size(uint8_t u8DataType);
 /**
  * @brief Decode Modbus meter data.
  *
- * @param[in]  pDataIn      Input data buffer.
- * @param[in]  u8DataType   Data type.
- * @param[in]  u8WordSwap   Word swap enable.
- * @param[in]  s8Multiplier Data multiplier exponent.
- * @param[out] pDataOut     Decoded data value.
+ * @param[in]  pDataIn               Input data buffer.
+ * @param[in]  u8DataType            Data type.
+ * @param[in]  u8WordSwap            Word swap enable.
+ * @param[in]  s8ScaleFactorExponent Data multiplier exponent.
+ * @param[out] pDataOut              Decoded data value.
  *
  * @return true if decoding is successful, otherwise false.
  */
-static bool sv_modbus_meter_decode(const uint8_t *pDataIn, uint8_t u8DataType, uint8_t u8WordSwap, int8_t s8Multiplier, double *pDataOut);
+static bool sv_modbus_meter_decode(const uint8_t *pDataIn, uint8_t u8DataType, uint8_t u8WordSwap, int8_t s8ScaleFactorExponent, double *pDataOut);
 
 /*==================================================================================================
 *                                   PUBLIC FUNCTIONS DEFINITIONS
@@ -76,7 +76,7 @@ bool sv_modbus_meter_get_data(uint8_t u8MeterIndex, Modbus_Meter_Data_t *pData)
         if (eModbusStatus == MODBUS_OK)
         {
             sv_modbus_meter_decode(au8RawData, sModbusMeterConfig[u8MeterIndex].sForwardTotalizer.u8DataType, sModbusMeterConfig[u8MeterIndex].sForwardTotalizer.u8WordSwap,
-                                   sModbusMeterConfig[u8MeterIndex].sForwardTotalizer.s8Multiplier, &pData->dTotalForward);
+                                   sModbusMeterConfig[u8MeterIndex].sForwardTotalizer.s8ScaleFactorExponent, &pData->dTotalForward);
         }
         else
         {
@@ -96,7 +96,7 @@ bool sv_modbus_meter_get_data(uint8_t u8MeterIndex, Modbus_Meter_Data_t *pData)
         if (eModbusStatus == MODBUS_OK)
         {
             sv_modbus_meter_decode(au8RawData, sModbusMeterConfig[u8MeterIndex].sReverseTotalizer.u8DataType, sModbusMeterConfig[u8MeterIndex].sReverseTotalizer.u8WordSwap,
-                                   sModbusMeterConfig[u8MeterIndex].sReverseTotalizer.s8Multiplier, &pData->dTotalReverse);
+                                   sModbusMeterConfig[u8MeterIndex].sReverseTotalizer.s8ScaleFactorExponent, &pData->dTotalReverse);
         }
         else
         {
@@ -116,7 +116,7 @@ bool sv_modbus_meter_get_data(uint8_t u8MeterIndex, Modbus_Meter_Data_t *pData)
         if (eModbusStatus == MODBUS_OK)
         {
             sv_modbus_meter_decode(au8RawData, sModbusMeterConfig[u8MeterIndex].sFlowRate.u8DataType, sModbusMeterConfig[u8MeterIndex].sFlowRate.u8WordSwap,
-                                   sModbusMeterConfig[u8MeterIndex].sFlowRate.s8Multiplier, &pData->dFlowRate);
+                                   sModbusMeterConfig[u8MeterIndex].sFlowRate.s8ScaleFactorExponent, &pData->dFlowRate);
         }
         else
         {
@@ -193,7 +193,7 @@ static uint8_t sv_modbus_meter_data_size(uint8_t u8DataType)
     }
 }
 
-static bool sv_modbus_meter_decode(const uint8_t *pDataIn, uint8_t u8DataType, uint8_t u8WordSwap, int8_t s8Multiplier, double *pDataOut)
+static bool sv_modbus_meter_decode(const uint8_t *pDataIn, uint8_t u8DataType, uint8_t u8WordSwap, int8_t s8ScaleFactorExponent, double *pDataOut)
 {
     const uint8_t u8DataSize = sv_modbus_meter_data_size(u8DataType);
     if (u8DataSize == 0)
@@ -312,16 +312,16 @@ static bool sv_modbus_meter_decode(const uint8_t *pDataIn, uint8_t u8DataType, u
     }
 
     // Apply multiplier (10^n)
-    if (s8Multiplier < 0)
+    if (s8ScaleFactorExponent < 0)
     {
-        for (int i = 0; i < -s8Multiplier; i++)
+        for (int i = 0; i < -s8ScaleFactorExponent; i++)
         {
             dValue /= 10.0;
         }
     }
-    else if (s8Multiplier > 0)
+    else if (s8ScaleFactorExponent > 0)
     {
-        for (int i = 0; i < s8Multiplier; i++)
+        for (int i = 0; i < s8ScaleFactorExponent; i++)
         {
             dValue *= 10.0;
         }
