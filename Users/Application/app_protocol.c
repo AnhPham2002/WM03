@@ -2092,6 +2092,11 @@ static Protocol_Err_Code_t app_protocol_set_handler(uint8_t u8Id, const uint8_t 
             sChangedInfo.u8ConfigId = (uint8_t)CHANGED_PASSWORD;
             app_storage_changed_info_log_save(&sChangedInfo);
         }
+        else
+        {
+            bFailFlag = 1;
+            break;
+        }
 
         break;
     }
