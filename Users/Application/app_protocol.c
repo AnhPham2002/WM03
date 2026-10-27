@@ -813,6 +813,7 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
 
     case CONFIG_PULSE_METER:
     {
+        uint8_t u8MeterIndex;
         Pulse_Meter_Config_Parameter_t sPulseMeterConfig;
 
         if (u16RxPayloadLen <= 1)
@@ -821,7 +822,8 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
             break;
         }
 
-        if (!app_storage_get_pulse_meter_config(pRxPayload[0], &sPulseMeterConfig))
+        u8MeterIndex = pRxPayload[0];
+        if (!app_storage_get_pulse_meter_config(u8MeterIndex, &sPulseMeterConfig))
         {
             bFailFlag = true;
             break;
@@ -867,6 +869,23 @@ static Protocol_Err_Code_t app_protocol_get_handler(uint8_t u8Id, const uint8_t 
                 memcpy(p, &sPulseMeterConfig.sConfig.sPulseConfig.u8EdgeType, sizeof(sPulseMeterConfig.sConfig.sPulseConfig.u8EdgeType));
                 p += sizeof(sPulseMeterConfig.sConfig.sPulseConfig.u8EdgeType);
                 break;
+
+            case CONFIG_PULSE_METER_DATA:
+            {
+                Pulse_Meter_Data_t sPulseMeterData;
+
+                if (!sv_pulse_meter_get_data(u8MeterIndex, &sPulseMeterData))
+                {
+                    sPulseMeterData.dTotalForward = -1;
+                    sPulseMeterData.dTotalReverse = -1;
+                    sPulseMeterData.dFlowRate = -1;
+                }
+                memcpy(p, &sPulseMeterData.dTotalForward, sizeof(sPulseMeterData.dTotalForward));
+                p += sizeof(sPulseMeterData.dTotalForward);
+                memcpy(p, &sPulseMeterData.dTotalReverse, sizeof(sPulseMeterData.dTotalReverse));
+                p += sizeof(sPulseMeterData.dTotalReverse);
+            }
+            break;
 
             default:
                 bFailFlag = true;
