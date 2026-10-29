@@ -12,9 +12,11 @@ static uint8_t u8RetryCount = 0;
 static uint8_t u8RetryStartSocketCount = 0;
 static uint8_t u8RetryConnectSocketCount = 0;
 
+static bool bCcidInfoRequested = false;
 static bool bCcidInfoValid = false;
 static Ccid_Info_t sCcidInfo;
 
+static bool bSignalInfoRequested = false;
 static bool bSignalInfoValid = false;
 static Signal_Info_t sSignalInfo;
 
@@ -31,6 +33,11 @@ static const char *const au8NtpServer[] = {
 void app_cellular_init(void)
 {
     sv_cellular_init();
+
+    if (sv_time_get_date_time_update_required())
+    {
+        eCellularStep = CELLULAR_STEP_ON;
+    }
 }
 
 void app_cellular_start(void)
@@ -54,22 +61,21 @@ void app_cellular_execute(void)
     switch (eCellularStep)
     {
     case CELLULAR_STEP_IDLE:
-        if (bPushPeriodFlag || sv_time_get_date_time_update_required())
+        if (bPushPeriodFlag)
         {
             eCellularStep = CELLULAR_STEP_ON;
         }
         break;
 
     case CELLULAR_STEP_ON:
-        if (sv_cellular_on())
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_on();
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            u8RetryCount = 0;
-            u32TimeConnect = sys_time_ms();
-            eCellularStep = CELLULAR_STEP_WAIT_AT_READY;
-        }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
+            if (eTaskStatus == CELLULAR_TASK_DONE)
+            {
+                eCellularStep = CELLULAR_STEP_WAIT_AT_READY;
+            }
+            else
             {
                 eCellularError = CELLULAR_ERROR_POWER_ON;
                 eCellularStep = CELLULAR_STEP_OFF;
@@ -78,65 +84,119 @@ void app_cellular_execute(void)
         break;
 
     case CELLULAR_STEP_WAIT_AT_READY:
-        if (sys_time_ms() - u32TimeConnect >= CELLULAR_WAIT_FOR_READY)
+    {
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_check_at();
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            eCellularError = CELLULAR_ERROR_AT_READY;
-            eCellularStep = CELLULAR_STEP_OFF;
-        }
-        else
-        {
-            if (sv_cellular_check_at())
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
                 u8RetryCount = 0;
                 eCellularStep = CELLULAR_STEP_TURN_OFF_ECHO;
             }
+            else
+            {
+                if (++u8RetryCount >= CELLULAR_RETRY)
+                {
+                    eCellularError = CELLULAR_ERROR_AT_READY;
+                    eCellularStep = CELLULAR_STEP_OFF;
+                }
+            }
         }
         break;
+    }
 
     case CELLULAR_STEP_TURN_OFF_ECHO:
-        if (sv_cellular_off_echo())
+    {
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_off_echo();
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            u8RetryCount = 0;
-            eCellularStep = CELLULAR_STEP_CHECK_SIM;
-        }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
-                eCellularError = CELLULAR_ERROR_AT_READY;
-                eCellularStep = CELLULAR_STEP_OFF;
+                u8RetryCount = 0;
+                eCellularStep = CELLULAR_STEP_CHECK_SIM;
+            }
+            else
+            {
+                if (++u8RetryCount >= CELLULAR_RETRY)
+                {
+                    eCellularError = CELLULAR_ERROR_AT_READY;
+                    eCellularStep = CELLULAR_STEP_OFF;
+                }
             }
         }
         break;
+    }
 
     case CELLULAR_STEP_CHECK_SIM:
-        if (sv_cellular_check_sim())
+    {
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_check_sim();
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            u8RetryCount = 0;
-            eCellularStep = CELLULAR_STEP_GET_INFO;
-        }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
-                eCellularError = CELLULAR_ERROR_SIM_NOT_READY;
-                eCellularStep = CELLULAR_STEP_OFF;
+                u8RetryCount = 0;
+                eCellularStep = CELLULAR_STEP_GET_INFO;
+            }
+            else
+            {
+                if (++u8RetryCount >= CELLULAR_RETRY)
+                {
+                    eCellularError = CELLULAR_ERROR_SIM_NOT_READY;
+                    eCellularStep = CELLULAR_STEP_OFF;
+                }
             }
         }
         break;
+    }
 
     case CELLULAR_STEP_GET_INFO:
-        if ((!bCcidInfoValid) && sv_cellular_get_ccid(&sCcidInfo))
+        if (!bCcidInfoRequested)
         {
-            bCcidInfoValid = true;
+            Cellular_Task_Status_t eTaskStatus = sv_cellular_get_ccid(&sCcidInfo);
+            if (eTaskStatus != CELLULAR_TASK_WAIT)
+            {
+                if (eTaskStatus == CELLULAR_TASK_DONE)
+                {
+                    u8RetryCount = 0;
+                    bCcidInfoValid = true;
+                    bCcidInfoRequested = true;
+                }
+                else
+                {
+                    if (++u8RetryCount >= CELLULAR_RETRY)
+                    {
+                        u8RetryCount = 0;
+                        bCcidInfoRequested = true;
+                    }
+                }
+            }
+        }
+        else if (!bSignalInfoRequested)
+        {
+            Cellular_Task_Status_t eTaskStatus = sv_cellular_check_signal_quality(&sSignalInfo);
+            if (eTaskStatus != CELLULAR_TASK_WAIT)
+            {
+                if (eTaskStatus == CELLULAR_TASK_DONE)
+                {
+                    u8RetryCount = 0;
+                    bSignalInfoValid = true;
+                    bSignalInfoRequested = true;
+                }
+                else
+                {
+                    if (++u8RetryCount >= CELLULAR_RETRY)
+                    {
+                        u8RetryCount = 0;
+                        bSignalInfoRequested = true;
+                    }
+                }
+
+                bSignalInfoValid = true;
+                bSignalInfoRequested = true;
+            }
         }
 
-        if ((!bSignalInfoValid) && sv_cellular_check_signal_quality(&sSignalInfo))
-        {
-            bSignalInfoValid = true;
-        }
-
-        if (bCcidInfoValid && bSignalInfoValid)
+        if (bCcidInfoRequested && bSignalInfoRequested)
         {
             if (sv_time_get_date_time_update_required() || bPushPeriodFlag)
             {
@@ -148,58 +208,61 @@ void app_cellular_execute(void)
                 eCellularStep = CELLULAR_STEP_OFF;
             }
         }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
-            {
-                eCellularStep = CELLULAR_STEP_OFF;
-            }
-        }
+
         break;
 
     case CELLULAR_STEP_CHECK_REGISTRATION_STATUS:
-        if (sv_cellular_check_registration_status())
+    {
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_check_registration_status();
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            u8RetryCount = 0;
-            if (sv_time_get_date_time_update_required())
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
-                eCellularStep = CELLULAR_STEP_SYNC_DATE_TIME;
+                u8RetryCount = 0;
+                if (sv_time_get_date_time_update_required())
+                {
+                    eCellularStep = CELLULAR_STEP_SYNC_DATE_TIME;
+                }
+                else
+                {
+                    eCellularStep = CELLULAR_STEP_START_SOCKET_SERVICE;
+                }
             }
             else
             {
-                eCellularStep = CELLULAR_STEP_START_SOCKET_SERVICE;
-            }
-        }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
-            {
-                eCellularError = CELLULAR_ERROR_NETWORK_NOT_REGISTERED;
-                eCellularStep = CELLULAR_STEP_OFF;
+                if (++u8RetryCount >= CELLULAR_RETRY)
+                {
+                    eCellularError = CELLULAR_ERROR_NETWORK_NOT_REGISTERED;
+                    eCellularStep = CELLULAR_STEP_OFF;
+                }
             }
         }
         break;
+    }
 
     case CELLULAR_STEP_SYNC_DATE_TIME:
     {
         static uint8_t u8NtpServerIndex = 0;
-
-        if (sv_cellular_update_system_time(au8NtpServer[u8NtpServerIndex], app_storage_get_timezone()))
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_update_system_time(au8NtpServer[u8NtpServerIndex], app_storage_get_timezone());
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            u8RetryCount = 0;
-            u8NtpServerIndex = 0;
-            eCellularStep = CELLULAR_STEP_GET_DATE_TIME;
-        }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
                 u8RetryCount = 0;
-                if (++u8NtpServerIndex >= ARRAY_SIZE(au8NtpServer))
+                u8NtpServerIndex = 0;
+                eCellularStep = CELLULAR_STEP_GET_DATE_TIME;
+            }
+            else
+            {
+                if (++u8RetryCount >= CELLULAR_RETRY)
                 {
-                    eCellularError = CELLULAR_ERROR_DATE_TIME_SYNC;
-                    u8NtpServerIndex = 0;
-                    eCellularStep = CELLULAR_STEP_OFF;
+                    u8RetryCount = 0;
+                    if (++u8NtpServerIndex >= ARRAY_SIZE(au8NtpServer))
+                    {
+                        eCellularError = CELLULAR_ERROR_DATE_TIME_SYNC;
+                        u8NtpServerIndex = 0;
+                        eCellularStep = CELLULAR_STEP_OFF;
+                    }
                 }
             }
         }
@@ -209,74 +272,47 @@ void app_cellular_execute(void)
     case CELLULAR_STEP_GET_DATE_TIME:
     {
         Date_Time_t sDateTime;
-        if (sv_cellular_get_time(&sDateTime.u8Year, &sDateTime.u8Month, &sDateTime.u8Date, &sDateTime.u8Hours, &sDateTime.u8Minutes, &sDateTime.u8Seconds))
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_get_time(&sDateTime.u8Year, &sDateTime.u8Month, &sDateTime.u8Date, &sDateTime.u8Hours, &sDateTime.u8Minutes, &sDateTime.u8Seconds);
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            if (sv_time_set_date_time(&sDateTime))
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
-                u8RetryCount = 0;
-                if (bPushPeriodFlag)
+                if (sv_time_set_date_time(&sDateTime))
                 {
-                    eCellularStep = CELLULAR_STEP_CHECK_REGISTRATION_STATUS;
-                }
-                else
-                {
-                    eCellularError = CELLULAR_ERROR_NONE;
-                    eCellularStep = CELLULAR_STEP_OFF;
+                    u8RetryCount = 0;
+                    if (bPushPeriodFlag)
+                    {
+                        eCellularStep = CELLULAR_STEP_CHECK_REGISTRATION_STATUS;
+                    }
+                    else
+                    {
+                        eCellularError = CELLULAR_ERROR_NONE;
+                        eCellularStep = CELLULAR_STEP_OFF;
+                    }
                 }
             }
-        }
-        if (sv_time_get_date_time_update_required())
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
+            if (sv_time_get_date_time_update_required())
             {
-                eCellularError = CELLULAR_ERROR_GET_DATE_TIME;
-                eCellularStep = CELLULAR_STEP_OFF;
+                if (++u8RetryCount >= CELLULAR_RETRY)
+                {
+                    eCellularError = CELLULAR_ERROR_GET_DATE_TIME;
+                    eCellularStep = CELLULAR_STEP_OFF;
+                }
             }
         }
         break;
     }
 
     case CELLULAR_STEP_START_SOCKET_SERVICE:
-        if (sv_cellular_start_socket_service())
+    {
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_start_socket_service();
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            u8RetryCount = 0;
-            u32TimeConnect = sys_time_ms();
-            eCellularStep = CELLULAR_STEP_CHECK_SOCKET_SERVICE;
-        }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
-            {
-                eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
-                eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
-            }
-        }
-        break;
-
-    case CELLULAR_STEP_CHECK_SOCKET_SERVICE:
-        if (sys_time_ms() - u32TimeConnect < AT_COMMAND_RESPONSE_TIMEOUT_NETWORK)
-        {
-            bool bStatus;
-            if (sv_cellular_check_socket_service(&bStatus))
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
                 u8RetryCount = 0;
-                if (bStatus)
-                {
-                    u8RetryStartSocketCount = 0;
-                    eCellularStep = CELLULAR_STEP_CONNECT_TCP_SOCKET;
-                }
-                else
-                {
-                    if (++u8RetryStartSocketCount >= CELLULAR_RETRY)
-                    {
-                        eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
-                        eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
-                    }
-                    else
-                    {
-                        eCellularStep = CELLULAR_STEP_START_SOCKET_SERVICE;
-                    }
-                }
+                u32TimeConnect = sys_time_ms();
+                eCellularStep = CELLULAR_STEP_CHECK_SOCKET_SERVICE;
             }
             else
             {
@@ -284,6 +320,48 @@ void app_cellular_execute(void)
                 {
                     eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
                     eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+                }
+            }
+        }
+        break;
+    }
+
+    case CELLULAR_STEP_CHECK_SOCKET_SERVICE:
+    {
+        if (sys_time_ms() - u32TimeConnect < AT_COMMAND_RESPONSE_TIMEOUT_NETWORK)
+        {
+            bool bStatus;
+            Cellular_Task_Status_t eTaskStatus = sv_cellular_check_socket_service(&bStatus);
+            if (eTaskStatus != CELLULAR_TASK_WAIT)
+            {
+                if (eTaskStatus == CELLULAR_TASK_DONE)
+                {
+                    u8RetryCount = 0;
+                    if (bStatus)
+                    {
+                        u8RetryStartSocketCount = 0;
+                        eCellularStep = CELLULAR_STEP_CONNECT_TCP_SOCKET;
+                    }
+                    else
+                    {
+                        if (++u8RetryStartSocketCount >= CELLULAR_RETRY)
+                        {
+                            eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
+                            eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+                        }
+                        else
+                        {
+                            eCellularStep = CELLULAR_STEP_START_SOCKET_SERVICE;
+                        }
+                    }
+                }
+                else
+                {
+                    if (++u8RetryCount >= CELLULAR_RETRY)
+                    {
+                        eCellularError = CELLULAR_ERROR_SOCKET_SERVICE_NOT_READY;
+                        eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+                    }
                 }
             }
         }
@@ -300,23 +378,28 @@ void app_cellular_execute(void)
             }
         }
         break;
+    }
 
     case CELLULAR_STEP_CONNECT_TCP_SOCKET:
     {
         Ip_Endpoint_t sIpEndpoint;
         app_storage_get_ip_endpoint(&sIpEndpoint);
-        if (sv_cellular_connect_tcp_socket(sIpEndpoint.au8Ipv4, sIpEndpoint.au8Port))
+        Cellular_Task_Status_t eTaskStatus = sv_cellular_connect_tcp_socket(sIpEndpoint.au8Ipv4, sIpEndpoint.au8Port);
+        if (eTaskStatus != CELLULAR_TASK_WAIT)
         {
-            u8RetryCount = 0;
-            u32TimeConnect = sys_time_ms();
-            eCellularStep = CELLULAR_STEP_CHECK_TCP_SOCKET;
-        }
-        else
-        {
-            if (++u8RetryCount >= CELLULAR_RETRY)
+            if (eTaskStatus == CELLULAR_TASK_DONE)
             {
-                eCellularError = CELLULAR_ERROR_TCP_CONNECT;
-                eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+                u8RetryCount = 0;
+                u32TimeConnect = sys_time_ms();
+                eCellularStep = CELLULAR_STEP_CHECK_TCP_SOCKET;
+            }
+            else
+            {
+                if (++u8RetryCount >= CELLULAR_RETRY)
+                {
+                    eCellularError = CELLULAR_ERROR_TCP_CONNECT;
+                    eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+                }
             }
         }
         break;
@@ -326,33 +409,37 @@ void app_cellular_execute(void)
         if (sys_time_ms() - u32TimeConnect < AT_COMMAND_RESPONSE_TIMEOUT_NETWORK)
         {
             bool bStatus;
-            if (sv_cellular_check_tcp_socket(&bStatus))
+            Cellular_Task_Status_t eTaskStatus = sv_cellular_check_tcp_socket(&bStatus);
+            if (eTaskStatus != CELLULAR_TASK_WAIT)
             {
-                u8RetryCount = 0;
-                if (bStatus)
+                if (eTaskStatus == CELLULAR_TASK_DONE)
                 {
-                    u8RetryConnectSocketCount = 0;
-                    eCellularStep = CELLULAR_STEP_COMMUNICATE;
+                    u8RetryCount = 0;
+                    if (bStatus)
+                    {
+                        u8RetryConnectSocketCount = 0;
+                        eCellularStep = CELLULAR_STEP_COMMUNICATE;
+                    }
+                    else
+                    {
+                        if (++u8RetryConnectSocketCount >= CELLULAR_RETRY)
+                        {
+                            eCellularError = CELLULAR_ERROR_TCP_CONNECT;
+                            eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+                        }
+                        else
+                        {
+                            eCellularStep = CELLULAR_STEP_CONNECT_TCP_SOCKET;
+                        }
+                    }
                 }
                 else
                 {
-                    if (++u8RetryConnectSocketCount >= CELLULAR_RETRY)
+                    if (++u8RetryCount >= CELLULAR_RETRY)
                     {
                         eCellularError = CELLULAR_ERROR_TCP_CONNECT;
                         eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
                     }
-                    else
-                    {
-                        eCellularStep = CELLULAR_STEP_CONNECT_TCP_SOCKET;
-                    }
-                }
-            }
-            else
-            {
-                if (++u8RetryCount >= CELLULAR_RETRY)
-                {
-                    eCellularError = CELLULAR_ERROR_TCP_CONNECT;
-                    eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
                 }
             }
         }
@@ -377,14 +464,18 @@ void app_cellular_execute(void)
 
     case CELLULAR_STEP_CLOSE_TCP_SOCKET:
         bConnectedFlag = false;
-        sv_cellular_close_tcp_socket();
-        eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+        if (sv_cellular_close_tcp_socket() != CELLULAR_TASK_WAIT)
+        {
+            eCellularStep = CELLULAR_STEP_STOP_SOCKET_SERVICE;
+        }
         break;
 
     case CELLULAR_STEP_STOP_SOCKET_SERVICE:
         bConnectedFlag = false;
-        sv_cellular_stop_socket_service();
-        eCellularStep = CELLULAR_STEP_OFF;
+        if (sv_cellular_stop_socket_service() != CELLULAR_TASK_WAIT)
+        {
+            eCellularStep = CELLULAR_STEP_OFF;
+        }
         break;
 
     case CELLULAR_STEP_RESET:
@@ -395,41 +486,51 @@ void app_cellular_execute(void)
         }
         else
         {
-            sv_cellular_reset();
-            u32TimeConnect = sys_time_ms();
-            eCellularStep = CELLULAR_STEP_WAIT_AT_READY;
+            if (sv_cellular_reset() == CELLULAR_TASK_DONE)
+            {
+                u32TimeConnect = sys_time_ms();
+                eCellularStep = CELLULAR_STEP_WAIT_AT_READY;
+            }
         }
         break;
 
     case CELLULAR_STEP_OFF:
-        sv_cellular_off();
-        bSignalInfoValid = false;
-        bCcidInfoValid = false;
-        if (bPushPeriodFlag)
+        if (sv_cellular_off() == CELLULAR_TASK_DONE)
         {
-            bCellularResultReady = true;
+            bCcidInfoRequested = false;
+            bCcidInfoValid = false;
+            bSignalInfoRequested = false;
+            bSignalInfoValid = false;
+            if (bPushPeriodFlag)
+            {
+                bCellularResultReady = true;
+            }
+            bPushPeriodFlag = false;
+            bConnectedFlag = false;
+            u8RetryCount = 0;
+            u8ResetCount = 0;
+            u8RetryStartSocketCount = 0;
+            u8RetryConnectSocketCount = 0;
+            eCellularStep = CELLULAR_STEP_IDLE;
         }
-        bPushPeriodFlag = false;
-        bConnectedFlag = false;
-        u8RetryCount = 0;
-        u8ResetCount = 0;
-        u8RetryStartSocketCount = 0;
-        u8RetryConnectSocketCount = 0;
-        eCellularStep = CELLULAR_STEP_IDLE;
         break;
 
     default:
-        sv_cellular_off();
-        bSignalInfoValid = false;
-        bCcidInfoValid = false;
-        bCellularResultReady = false;
-        bPushPeriodFlag = false;
-        bConnectedFlag = false;
-        u8RetryCount = 0;
-        u8ResetCount = 0;
-        u8RetryStartSocketCount = 0;
-        u8RetryConnectSocketCount = 0;
-        eCellularStep = CELLULAR_STEP_IDLE;
+        if (sv_cellular_off() == CELLULAR_TASK_DONE)
+        {
+            bCcidInfoRequested = false;
+            bCcidInfoValid = false;
+            bSignalInfoRequested = false;
+            bSignalInfoValid = false;
+            bCellularResultReady = false;
+            bPushPeriodFlag = false;
+            bConnectedFlag = false;
+            u8RetryCount = 0;
+            u8ResetCount = 0;
+            u8RetryStartSocketCount = 0;
+            u8RetryConnectSocketCount = 0;
+            eCellularStep = CELLULAR_STEP_IDLE;
+        }
         break;
     }
 }
@@ -485,7 +586,13 @@ bool app_cellular_send_data(const uint8_t *pData, uint16_t u16Len)
 
     if (bConnectedFlag)
     {
-        if (sv_cellular_send_data(pData, u16Len))
+        Cellular_Task_Status_t eTaskStatus;
+        do
+        {
+            eTaskStatus = sv_cellular_send_data(pData, u16Len);
+        } while (eTaskStatus == CELLULAR_TASK_WAIT);
+
+        if (eTaskStatus == CELLULAR_TASK_WAIT)
         {
             return true;
         }
@@ -503,7 +610,13 @@ bool app_cellular_receive_data(uint8_t *pData, uint16_t *u16Len)
 
     if (bConnectedFlag)
     {
-        if (sv_cellular_receive_data(pData, u16Len))
+        Cellular_Task_Status_t eTaskStatus;
+        do
+        {
+            eTaskStatus = sv_cellular_receive_data(pData, u16Len);
+        } while (eTaskStatus == CELLULAR_TASK_WAIT);
+
+        if (eTaskStatus == CELLULAR_TASK_WAIT)
         {
             return true;
         }

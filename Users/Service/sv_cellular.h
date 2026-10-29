@@ -10,6 +10,32 @@
 #define AT_COMMAND_RESPONSE_TIMEOUT_NETWORK 120000 // ms
 #define HES_RESPONSE_TIMEOUT 5000                  // ms
 
+typedef enum
+{
+    CELLULAR_WAIT_PENDING = 0,
+    CELLULAR_WAIT_OK,
+    CELLULAR_WAIT_TIMEOUT,
+    CELLULAR_WAIT_ERROR
+} Cellular_Wait_Result_t;
+
+typedef enum
+{
+    CELLULAR_TASK_IDLE = 0,
+    CELLULAR_TASK_SEND,
+    CELLULAR_TASK_WAIT,
+    CELLULAR_TASK_DONE,
+    CELLULAR_TASK_FAIL
+} Cellular_Task_Status_t;
+
+typedef struct
+{
+    const char *const *pKeywords;
+    uint8_t u8KeywordCount;
+    uint32_t u32Timeout;
+    uint32_t u32TimeStart;
+    bool bActive;
+} Cellular_Wait_Context_t;
+
 typedef struct
 {
     uint8_t au8Ccid[MAX_SIM_CCID_SIZE];
@@ -30,165 +56,213 @@ typedef struct
 void sv_cellular_init(void);
 
 /**
- * @brief Turn on cellular module service.
+ * @brief Power on the cellular module.
  *
- * @return true if successful, otherwise false.
+ * Executes the hardware power-on sequence and waits for the UART interface
+ * to become ready.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_on(void);
+Cellular_Task_Status_t sv_cellular_on(void);
 
 /**
- * @brief Turn off cellular module service.
+ * @brief Power off the cellular module.
  *
- * @return true if successful, otherwise false.
+ * Sends the AT+CPOF command and waits for the shutdown response.
+ * Performs a hardware power-off if the command fails or times out.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_off(void);
+Cellular_Task_Status_t sv_cellular_off(void);
 
 /**
- * @brief Reset cellular module.
+ * @brief Reset the cellular module.
  *
- * @return true if successful, otherwise false.
+ * Sends the AT+CRESET command and waits for the reset response.
+ * Performs a hardware reset if the command fails or times out.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_reset(void);
+Cellular_Task_Status_t sv_cellular_reset(void);
 
 /**
- * @brief Check cellular module AT command response.
+ * @brief Check AT command communication with the cellular module.
  *
- * @return true if the module responds successfully, otherwise false.
+ * Sends the AT command and waits for an OK response.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_check_at(void);
+Cellular_Task_Status_t sv_cellular_check_at(void);
 
 /**
- * @brief Disable cellular module command echo.
+ * @brief Disable command echo on the cellular module.
  *
- * @return true if successful, otherwise false.
+ * Sends the ATE0 command and waits for an OK response.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_off_echo(void);
+Cellular_Task_Status_t sv_cellular_off_echo(void);
 
 /**
- * @brief Check SIM card status.
+ * @brief Check SIM card readiness.
  *
- * @return true if the SIM card is ready, otherwise false.
+ * Sends the AT+CPIN? command and waits for the SIM READY response.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_check_sim(void);
+Cellular_Task_Status_t sv_cellular_check_sim(void);
 
 /**
  * @brief Check cellular network registration status.
  *
- * @return true if the module is registered, otherwise false.
+ * Sends the AT+CEREG? command and waits for home network or roaming
+ * registration confirmation.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_check_registration_status(void);
+Cellular_Task_Status_t sv_cellular_check_registration_status(void);
 
 /**
- * @brief Start socket service.
+ * @brief Start the cellular network socket service.
  *
- * @return true if successful, otherwise false.
+ * Sends the AT+NETOPEN command and waits for confirmation that the
+ * network service is open or already opened.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_start_socket_service(void);
+Cellular_Task_Status_t sv_cellular_start_socket_service(void);
 
 /**
- * @brief Stop socket service.
+ * @brief Stop the cellular network socket service.
  *
- * @return true if successful, otherwise false.
+ * Sends the AT+NETCLOSE command and waits for confirmation that the
+ * service is closed or already closed.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_stop_socket_service(void);
+Cellular_Task_Status_t sv_cellular_stop_socket_service(void);
 
 /**
- * @brief Get socket service status.
+ * @brief Check the cellular network socket service status.
  *
- * @param[out] bStatus Socket service status.
+ * Sends the AT+NETOPEN? command and parses the service status from the response.
  *
- * @return true if @p bStatus is valid, otherwise false.
+ * @param[out] bStatus Socket service status (true if open, otherwise false).
+ *
+ * @return Current task status.
  */
-bool sv_cellular_check_socket_service(bool *bStatus);
+Cellular_Task_Status_t sv_cellular_check_socket_service(bool *bStatus);
 
 /**
- * @brief Connect to TCP socket.
+ * @brief Establish a TCP socket connection.
  *
- * @param[in] pIp   Server IP address.
- * @param[in] pPort Server port.
+ * Sends the AT+CIPOPEN command to connect to the specified IP address
+ * and port.
  *
- * @return true if successful, otherwise false.
+ * @param[in] pIp   Server IP address as a 15-character string.
+ * @param[in] pPort Server port string.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_connect_tcp_socket(const uint8_t *pIp, uint8_t *pPort);
+Cellular_Task_Status_t sv_cellular_connect_tcp_socket(const uint8_t *pIp, uint8_t *pPort);
 
 /**
- * @brief Close TCP socket.
+ * @brief Close the TCP socket connection.
  *
- * @return true if successful, otherwise false.
+ * Sends the AT+CIPCLOSE=0 command and waits for confirmation that
+ * the socket is closed or already closed.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_close_tcp_socket(void);
+Cellular_Task_Status_t sv_cellular_close_tcp_socket(void);
 
 /**
- * @brief Get TCP socket status.
+ * @brief Check the TCP socket connection status.
  *
- * @param[out] bStatus TCP socket status.
+ * Sends the AT+CIPCLOSE? command and parses the socket connection status
+ * from the response.
  *
- * @return true if @p bStatus is valid, otherwise false.
+ * @param[out] bStatus Socket connection status (true if connected, otherwise false).
+ *
+ * @return Current task status.
  */
-bool sv_cellular_check_tcp_socket(bool *bStatus);
+Cellular_Task_Status_t sv_cellular_check_tcp_socket(bool *bStatus);
 
 /**
- * @brief Send data through cellular connection.
+ * @brief Send data through the TCP socket.
+ *
+ * Requests a send prompt, transmits the payload, and waits for confirmation
+ * that the requested data length was sent successfully.
  *
  * @param[in] pData   Data buffer.
- * @param[in] u16Size Data size.
+ * @param[in] u16Size Data size in bytes.
  *
- * @return true if successful, otherwise false.
+ * @return Current task status.
  */
-bool sv_cellular_send_data(const uint8_t *pData, uint16_t u16Size);
+Cellular_Task_Status_t sv_cellular_send_data(const uint8_t *pData, uint16_t u16Size);
 
 /**
- * @brief Receive data from cellular connection.
+ * @brief Receive data from the TCP socket.
  *
- * @param[out] pData      Receive buffer.
- * @param[in,out] u16Size Data size.
+ * Retrieves incoming data from the receive buffer or waits for an +IPD
+ * notification, then extracts the payload and its length.
  *
- * @return true if successful, otherwise false.
+ * @param[out] pData   Output data buffer.
+ * @param[out] u16Size Received data size in bytes.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_receive_data(uint8_t *pData, uint16_t *u16Size);
+Cellular_Task_Status_t sv_cellular_receive_data(uint8_t *pData, uint16_t *u16Size);
 
 /**
- * @brief Get the SIM card ICCID.
+ * @brief Retrieve the SIM card ICCID.
  *
- * Queries the cellular module and retrieves the ICCID.
+ * Sends the AT+CICCID command and parses the ICCID from the response.
  *
- * @param[out] pInfo ICCID information.
+ * @param[out] pInfo SIM card ICCID information.
  *
- * @return true if the ICCID is retrieved successfully, otherwise false.
+ * @return Current task status.
  */
-bool sv_cellular_get_ccid(Ccid_Info_t *pInfo);
+Cellular_Task_Status_t sv_cellular_get_ccid(Ccid_Info_t *pInfo);
 
 /**
- * @brief Check cellular signal quality.
+ * @brief Retrieve cellular signal quality information.
  *
- * Queries the cellular module and retrieves RSRQ, RSRP, RSSI, and RSSNR.
+ * Sends the AT+CPSI? command and parses RSRQ, RSRP, RSSI, and RSSNR
+ * from the response.
  *
- * @param[out] pInfo Cellular signal information.
+ * @param[out] pInfo Cellular signal quality information.
  *
- * @return true if the signal information is retrieved successfully, otherwise false.
+ * @return Current task status.
  */
-bool sv_cellular_check_signal_quality(Signal_Info_t *pInfo);
+Cellular_Task_Status_t sv_cellular_check_signal_quality(Signal_Info_t *pInfo);
 
 /**
- * @brief Update system time from NTP server.
+ * @brief Synchronize system time with an NTP server.
  *
- * @param[in] pHost     NTP server host.
- * @param[in] fTimezone Timezone offset.
+ * Configures the NTP server and timezone, then requests time synchronization.
  *
- * @return true if successful, otherwise false.
+ * @param[in] pHost      NTP server hostname.
+ * @param[in] fTimezone  Timezone offset in hours, from UTC-12 to UTC+14,
+ *                       in 15-minute increments.
+ *
+ * @return Current task status.
  */
-bool sv_cellular_update_system_time(const char *pHost, float fTimezone);
+Cellular_Task_Status_t sv_cellular_update_system_time(const char *pHost, float fTimezone);
 
 /**
- * @brief Get cellular module date and time.
+ * @brief Retrieve date and time from the cellular module.
  *
- * @param[out] u8Year    Year.
- * @param[out] u8Month   Month.
- * @param[out] u8Date    Date.
- * @param[out] u8Hours   Hour.
- * @param[out] u8Minutes Minute.
- * @param[out] u8Seconds Second.
+ * Sends the AT+CCLK? command and parses the year, month, date, hours,
+ * minutes, and seconds from the response.
  *
- * @return true if successful, otherwise false.
+ * @param[out] u8Year    Year (two-digit format).
+ * @param[out] u8Month   Month (1–12).
+ * @param[out] u8Date    Day of the month (1–31).
+ * @param[out] u8Hours   Hour (0–23).
+ * @param[out] u8Minutes Minute (0–59).
+ * @param[out] u8Seconds Second (0–59).
+ *
+ * @return Current task status.
  */
-bool sv_cellular_get_time(uint8_t *u8Year, uint8_t *u8Month, uint8_t *u8Date, uint8_t *u8Hours, uint8_t *u8Minutes, uint8_t *u8Seconds);
+Cellular_Task_Status_t sv_cellular_get_time(uint8_t *u8Year, uint8_t *u8Month, uint8_t *u8Date, uint8_t *u8Hours, uint8_t *u8Minutes, uint8_t *u8Seconds);
